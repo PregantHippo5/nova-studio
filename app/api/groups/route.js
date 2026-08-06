@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
+import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 
 function generateInviteCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans caractères ambigus (0/O, 1/I)
