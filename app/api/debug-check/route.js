@@ -6,20 +6,26 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const userId = '99ad38ed-5e75-4e6c-911f-27e384d27b9f';
-  const { data, error } = await supabaseAdmin
+
+  const { data: filtered, error: filteredErr } = await supabaseAdmin
     .from('group_members')
-    .select('group_id')
+    .select('group_id, user_id')
     .eq('user_id', userId);
 
-  // Seule une VRAIE clé service_role peut appeler cette API admin — si ça échoue,
-  // la clé configurée n'est pas la bonne (probablement la clé anon collée par erreur).
+  // Sans filtre du tout — pour voir si le serveur voit la table ne serait-ce qu'un peu.
+  const { data: unfiltered, error: unfilteredErr } = await supabaseAdmin
+    .from('group_members')
+    .select('group_id, user_id')
+    .limit(10);
+
   const adminTest = await supabaseAdmin.auth.admin.listUsers();
 
   return Response.json({
     supabaseUrlUtilisee: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    resultatRequete: data,
-    erreurEventuelle: error ? error.message : null,
+    resultatAvecFiltre: filtered,
+    erreurAvecFiltre: filteredErr ? filteredErr.message : null,
+    resultatSansFiltre: unfiltered,
+    erreurSansFiltre: unfilteredErr ? unfilteredErr.message : null,
     cleEstVraimentServiceRole: !adminTest.error,
-    erreurTestAdmin: adminTest.error ? adminTest.error.message : null,
   });
 }
