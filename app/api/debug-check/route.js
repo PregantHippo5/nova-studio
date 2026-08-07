@@ -11,9 +11,15 @@ export async function GET() {
     .select('group_id')
     .eq('user_id', userId);
 
+  // Seule une VRAIE clé service_role peut appeler cette API admin — si ça échoue,
+  // la clé configurée n'est pas la bonne (probablement la clé anon collée par erreur).
+  const adminTest = await supabaseAdmin.auth.admin.listUsers();
+
   return Response.json({
     supabaseUrlUtilisee: process.env.NEXT_PUBLIC_SUPABASE_URL,
     resultatRequete: data,
     erreurEventuelle: error ? error.message : null,
+    cleEstVraimentServiceRole: !adminTest.error,
+    erreurTestAdmin: adminTest.error ? adminTest.error.message : null,
   });
 }
