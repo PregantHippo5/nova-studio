@@ -29,10 +29,24 @@ export async function POST(request) {
   }
   if (insertErr) return Response.json({ error: insertErr.message }, { status: 500 });
 
-  const { error: memberErr } = await supabaseAdmin
-    .from('group_members')
-    .insert({ group_id: group.id, user_id: userId, user_name: userName || 'Anonyme' });
-  if (memberErr) return Response.json({ error: memberErr.message }, { status: 500 });
+  const { data: member, error: memberErr } = await supabaseAdmin
+  .from('group_members')
+  .insert({
+    group_id: group.id,
+    user_id: userId,
+    user_name: userName || 'Anonyme'
+  })
+  .select('group_id, user_id, user_name')
+  .single();
 
-  return Response.json({ id: group.id, name: group.name, inviteCode: group.invite_code });
+  if (memberErr) {
+	return Response.json({ error: memberErr.message }, { status: 500 });
+  }
+  
+  return Response.json({
+	id: group.id,
+	name: group.name,
+	inviteCode: group.invite_code,
+	member
+  });
 }
