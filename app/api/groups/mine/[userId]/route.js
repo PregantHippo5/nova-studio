@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(request, { params }) {
   try {
@@ -15,22 +16,21 @@ export async function GET(request, { params }) {
 
     const { data: memberships, error: mErr } = await supabaseAdmin
       .from('group_members')
-      .select('group_id')
+      .select('group_id, user_id, user_name')
       .eq('user_id', userId);
 
     if (mErr) {
-      console.error('Erreur group_members:', mErr);
       return Response.json(
-        { error: mErr.message },
+        { error: 'Erreur group_members', details: mErr.message },
         { status: 500 }
       );
     }
 
-    const groupIds = memberships.map((m) => m.group_id);
-
-    if (groupIds.length === 0) {
+    if (!memberships || memberships.length === 0) {
       return Response.json([]);
     }
+
+    const groupIds = memberships.map((m) => m.group_id);
 
     const { data: groups, error: gErr } = await supabaseAdmin
       .from('groups')
@@ -38,22 +38,8 @@ export async function GET(request, { params }) {
       .in('id', groupIds);
 
     if (gErr) {
-      console.error('Erreur groups:', gErr);
       return Response.json(
-        { error: gErr.message },
-        { status: 500 }
-      );
-    }
-
-    const { data: allMembers, error: memErr } = await supabaseAdmin
-      .from('group_members')
-      .select('group_id, user_id, user_name')
-      .in('group_id', groupIds);
-
-    if (memErr) {
-      console.error('Erreur group_members membres:', memErr);
-      return Response.json(
-        { error: memErr.message },
+        { error: 'Erreur groups', details: gErr.message },
         { status: 500 }
       );
     }
@@ -63,7 +49,7 @@ export async function GET(request, { params }) {
         id: g.id,
         name: g.name,
         inviteCode: g.invite_code,
-        members: allMembers
+        members: memberships
           .filter((m) => m.group_id === g.id)
           .map((m) => ({
             userId: m.user_id,
@@ -72,10 +58,11 @@ export async function GET(request, { params }) {
       }))
     );
   } catch (err) {
-    console.error('Erreur GET /api/groups/mine/[userId]:', err);
-
     return Response.json(
-      { error: err?.message || 'Erreur serveur inconnue' },
+      {
+        error: 'Erreur serveur',
+        details: err?.message || String(err),
+      },
       { status: 500 }
     );
   }
