@@ -1,5 +1,10 @@
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin';
 
+// Empêche Vercel de mettre cette route en cache — sinon une réponse vide
+// (ex: le tout premier appel, avant que des groupes existent) resterait
+// servie indéfiniment même après ajout de données.
+export const dynamic = 'force-dynamic';
+
 export async function GET(request, { params }) {
   const { id } = params;
   const { data, error } = await supabaseAdmin
