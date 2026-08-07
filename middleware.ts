@@ -7,18 +7,36 @@ function getPreferredLocale(request: NextRequest): string {
   if (cookieLocale && (locales as readonly string[]).includes(cookieLocale)) {
     return cookieLocale;
   }
-
   const acceptLanguage = request.headers.get('accept-language') ?? '';
   const preferred = acceptLanguage.split(',')[0]?.slice(0, 2).toLowerCase();
   if (preferred && (locales as readonly string[]).includes(preferred)) {
     return preferred;
   }
-
   return defaultLocale;
 }
 
+// Autorise les requêtes cross-origin vers /api/* — nécessaire car l'app desktop
+// (Electron) tourne sur http://127.0.0.1:xxxxx, une origine différente du site.
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // --- CORS pour les routes API : traité en premier, indépendamment du reste ---
+  if (pathname.startsWith('/api/')) {
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+    }
+    const apiResponse = NextResponse.next();
+    for (const [key, value] of Object.entries(CORS_HEADERS)) {
+      apiResponse.headers.set(key, value);
+    }
+    return apiResponse;
+  }
 
   // /admin and /auth (OAuth callback) live outside the /fr /en split.
   const isAdminPath = pathname === '/admin' || pathname.startsWith('/admin/');
@@ -37,7 +55,6 @@ export async function middleware(request: NextRequest) {
 
   // 2. Refresh the Supabase auth session (keeps admin sessions alive).
   let response = NextResponse.next({ request });
-
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -56,12 +73,10 @@ export async function middleware(request: NextRequest) {
       },
     }
   );
-
   await supabase.auth.getUser();
-
   return response;
 }
 
 export const config = {
-  matcher: ['/((?!_next|api|favicon.ico|.*\\..*).*)'],
+  matcher: ['/((?!_next|api|favicon.ico|.*\\..*).*)', '/api/:path*'],
 };
