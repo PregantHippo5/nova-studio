@@ -51,7 +51,7 @@ export default function ConnectSocleButton({ locale }: { locale: string }) {
       <button
         onClick={handleClick}
         disabled={status === 'loading'}
-        className="rounded-full bg-ink py-2.5 text-center text-sm font-medium text-white transition-opacity duration-200 hover:opacity-85 disabled:opacity-60"
+        className="rounded-full border border-accent-soft bg-accent-soft py-2.5 text-center text-sm font-medium text-accent transition-opacity duration-200 hover:opacity-85 disabled:opacity-60"
       >
         {status === 'loading'
           ? locale === 'fr'
