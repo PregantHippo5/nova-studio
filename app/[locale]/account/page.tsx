@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Container from '@/components/ui/Container';
 import LogoutButton from '@/components/auth/LogoutButton';
+import ConnectSocleButton from '@/components/account/ConnectSocleButton';
 import { createClient } from '@/lib/supabase/server';
 import { isLocale, defaultLocale, Locale } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/dictionaries';
@@ -46,6 +47,7 @@ export default async function AccountPage({ params }: { params: { locale: string
           </p>
 
           <div className="mt-6 flex flex-col gap-2">
+            <ConnectSocleButton locale={locale} />
             {admin && (
               <a
                 href="/admin/projects"
