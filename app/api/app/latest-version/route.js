@@ -1,9 +1,5 @@
 // app/api/app/latest-version/route.js
-//
-// Renvoie les infos de la dernière version publiée de SOCLE (table app_releases
-// dans Supabase). Appelée directement depuis main.js (Node, dans l'app desktop),
-// pas depuis un navigateur — pas besoin de gérer CORS ici, contrairement à
-// exchange/route.js qui est appelée depuis le mini-serveur local de SOCLE.
+// VERSION DE DEBUG TEMPORAIRE — à remettre comme avant une fois le problème résolu.
 
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
 
@@ -15,14 +11,16 @@ export async function GET() {
     .limit(1)
     .maybeSingle();
 
+  // NEXT_PUBLIC_SUPABASE_URL n'est pas secrète (déjà visible côté navigateur
+  // partout ailleurs sur le site) — on peut l'afficher sans risque pour déboguer.
+  const debugInfo = { debug_supabase_url_used_by_server: process.env.NEXT_PUBLIC_SUPABASE_URL || null };
+
   if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: error.message, ...debugInfo }, { status: 500 });
   }
   if (!data) {
-    return Response.json({ error: 'no release found' }, { status: 404 });
+    return Response.json({ error: 'no release found', ...debugInfo }, { status: 404 });
   }
 
-  return Response.json(data, {
-    headers: { 'Cache-Control': 'public, max-age=60' },
-  });
+  return Response.json({ ...data, ...debugInfo });
 }
