@@ -44,10 +44,6 @@ export default function ProjectForm({ project }: { project?: Project }) {
   );
 
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [downloadUrl, setDownloadUrl] = useState(
-	project?.links?.find((l) => l.download)?.href ?? ''
-  );
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,41 +53,7 @@ export default function ProjectForm({ project }: { project?: Project }) {
   const addLink = () =>
     setLinks((prev) => [...prev, { label: '', href: '#', kind: 'secondary', available: true }]);
   const removeLink = (index: number) => setLinks((prev) => prev.filter((_, i) => i !== index));
-  
-  const handleExeUpload = async (file: File) => {
-	if (!file.name.toLowerCase().endsWith('.exe')) {
-		setError('Sélectionne un fichier .exe.');
-		return;
-	}
 
-	setUploading(true);
-	setError(null);
-
-	try {
-		const path = `projects/${slug || slugify(name)}/${file.name}`;
-
-		const { error: uploadError } = await supabase.storage
-			.from('downloads')
-			.upload(path, file, {
-			 upsert: true,
-			 contentType: 'application/vnd.microsoft.portable-executable',
-		});
-
-		if (uploadError) throw uploadError;
-
-		const { data } = supabase.storage
-			.from('downloads')
-			.getPublicUrl(path);
-
-		setDownloadUrl(data.publicUrl);
-	} catch (err) {
-	  setError(
-		err instanceof Error ? err.message : "Erreur pendant l'upload."
-      );
-	} finally {
-		setUploading(false);
-	}
-  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -306,35 +268,7 @@ export default function ProjectForm({ project }: { project?: Project }) {
             />
           </div>
         </div>
-		<div>
-			<label className="mb-1.5 block text-[0.8rem] font-medium">
-			  Fichier .exe à télécharger
-			</label>
 
-			<input
-				type="file"
-				accept=".exe"
-				disabled={uploading}
-				onChange={(e) => {
-					const file = e.target.files?.[0];
-					if (file) handleExeUpload(file);
-				}}
-				className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-			/>
-
-			{uploading && (
-				<p className="mt-2 text-xs text-muted">
-					Upload du fichier en cours...
-				</p>
-			)}
-
-			{downloadUrl && !uploading && (
-				<p className="mt-2 break-all text-xs text-muted">
-					✓ Fichier uploadé
-				</p>
-			)}
-		</div>
-		
         <div>
           <label className="mb-2 block text-[0.8rem] font-medium">Liens</label>
           <div className="flex flex-col gap-2">
