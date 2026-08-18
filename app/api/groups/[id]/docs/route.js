@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin';
+import { getVerifiedUserId } from '../../../../../lib/verifyUser';
 
 // Empêche Vercel de mettre cette route en cache — sinon une réponse vide
 // (ex: le tout premier appel, avant que des groupes existent) resterait
@@ -20,10 +21,13 @@ export async function GET(request, { params }) {
 }
 
 export async function POST(request, { params }) {
+  const userId = await getVerifiedUserId(request);
+  if (!userId) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
+
   const { id } = params;
   const body = await request.json().catch(() => ({}));
-  const { userId, userName, title, content } = body;
-  if (!userId || !title) return Response.json({ error: 'userId et title sont requis.' }, { status: 400 });
+  const { userName, title, content } = body;
+  if (!title) return Response.json({ error: 'title est requis.' }, { status: 400 });
 
   const ts = Date.now();
   const { error } = await supabaseAdmin.from('group_docs').insert({

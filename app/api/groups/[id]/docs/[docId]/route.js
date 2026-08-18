@@ -1,10 +1,11 @@
 import { supabaseAdmin } from '../../../../../../lib/supabaseAdmin';
+import { getVerifiedUserId } from '../../../../../../lib/verifyUser';
 
 export async function DELETE(request, { params }) {
+  const userId = await getVerifiedUserId(request);
+  if (!userId) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
+
   const { id, docId } = params;
-  const body = await request.json().catch(() => ({}));
-  const { userId } = body;
-  if (!userId) return Response.json({ error: 'userId requis.' }, { status: 400 });
 
   // Seul l'auteur de la fiche peut la retirer.
   const { error } = await supabaseAdmin

@@ -1,10 +1,14 @@
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
+import { getVerifiedUserId } from '../../../../lib/verifyUser';
 
 export async function POST(request) {
+  const userId = await getVerifiedUserId(request);
+  if (!userId) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
+
   const body = await request.json().catch(() => ({}));
-  const { userId, userName, inviteCode } = body;
-  if (!userId || !inviteCode) {
-    return Response.json({ error: 'userId et inviteCode sont requis.' }, { status: 400 });
+  const { userName, inviteCode } = body;
+  if (!inviteCode) {
+    return Response.json({ error: 'inviteCode est requis.' }, { status: 400 });
   }
 
   const { data: group, error: gErr } = await supabaseAdmin

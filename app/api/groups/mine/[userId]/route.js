@@ -1,23 +1,25 @@
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin';
+import { getVerifiedUserId } from '../../../../../lib/verifyUser';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET(request, { params }) {
   try {
-    const { userId } = await params;
+    const verifiedUserId = await getVerifiedUserId(request);
+    if (!verifiedUserId) {
+      return Response.json({ error: 'Non authentifié.' }, { status: 401 });
+    }
 
-    if (!userId) {
-      return Response.json(
-        { error: 'userId manquant' },
-        { status: 400 }
-      );
+    const { userId } = await params;
+    if (userId !== verifiedUserId) {
+      return Response.json({ error: 'Interdit.' }, { status: 403 });
     }
 
     const { data: memberships, error: mErr } = await supabaseAdmin
       .from('group_members')
       .select('group_id, user_id, user_name')
-      .eq('user_id', userId);
+      .eq('user_id', verifiedUserId);
 
     if (mErr) {
       return Response.json(
