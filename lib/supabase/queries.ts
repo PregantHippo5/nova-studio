@@ -95,6 +95,38 @@ export async function getProject(slug: string): Promise<Project | null> {
   return mapProjectRow(project, versions ?? []);
 }
 
+// --- Releases desktop (auto-update + téléchargement public unifiés) ---
+//
+// Une seule source de vérité, utilisée à la fois par /api/app/latest-version
+// (auto-update interne à SOCLE) et par la page publique du projet (boutons
+// de téléchargement) — voir la décision d'unification des deux flux.
+export interface LatestRelease {
+  version: string;
+  notes: string | null;
+  windowsDownloadUrl: string | null;
+  macosDownloadUrl: string | null;
+}
+
+export async function getLatestRelease(projectSlug: string): Promise<LatestRelease | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('app_releases')
+    .select('version, notes, windows_download_url, macos_download_url')
+    .eq('project_slug', projectSlug)
+    .order('published_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  return {
+    version: data.version,
+    notes: data.notes,
+    windowsDownloadUrl: data.windows_download_url,
+    macosDownloadUrl: data.macos_download_url,
+  };
+}
+
 export async function getJournalEntries(): Promise<JournalEntry[]> {
   const supabase = await createClient();
   const { data, error } = await supabase

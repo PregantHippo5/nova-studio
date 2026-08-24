@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Container from '@/components/ui/Container';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { getProject } from '@/lib/supabase/queries';
+import { getProject, getLatestRelease } from '@/lib/supabase/queries';
 import { isLocale, defaultLocale, Locale } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 
@@ -25,6 +25,14 @@ export default async function ProjectPage({ params }: { params: { locale: string
   if (!project) notFound();
   const locale: Locale = isLocale(params.locale) ? params.locale : defaultLocale;
   const dict = getDictionary(locale);
+
+  // Le bouton de téléchargement principal (desktop) est dérivé de
+  // app_releases — même source que l'auto-updater dans main.js — pour
+  // qu'il ne puisse jamais afficher une version différente de celle que
+  // l'app propose déjà à ses utilisateurs existants. Les liens additionnels
+  // (site externe, changelog, réseaux...) restent gérés à la main via
+  // project.links, indépendamment de ce bouton.
+  const release = await getLatestRelease(project.slug);
 
   return (
     <div className="pb-28">
@@ -128,42 +136,85 @@ export default async function ProjectPage({ params }: { params: { locale: string
         </div>
 
         <aside className="h-fit rounded-2xl border border-line p-6">
-          {project.currentVersion && (
+          {release && (
             <div className="mb-6">
               <p className="text-xs uppercase tracking-[0.06em] text-muted">
                 {dict.projectDetail.currentVersion}
               </p>
-              <p className="mt-1 font-mono text-sm text-ink">{project.currentVersion}</p>
+              <p className="mt-1 font-mono text-sm text-ink">{release.version}</p>
             </div>
           )}
-          <div className="flex flex-col gap-2.5">
-            {project.links.map((link) =>
-              link.available === false ? (
-                <span
-                  key={link.label}
-                  aria-disabled="true"
-                  className="inline-flex cursor-not-allowed items-center justify-center rounded-full border border-line px-4 py-2.5 font-mono text-xs uppercase tracking-[0.06em] text-muted"
-                >
-                  {link.label} · {dict.common.comingSoon}
-                </span>
-              ) : (
+
+          {release && (
+            <div className="flex flex-col gap-2.5">
+              {release.windowsDownloadUrl && (
                 <a
-                  key={link.label}
-                  href={link.href}
-                  target={!link.download && link.href.startsWith('http') ? '_blank' : undefined}
-                  rel="noreferrer"
-                  download={link.download ? true : undefined}
-                  className={`inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-300 ease-smooth ${
-                    link.kind === 'primary'
-                      ? 'bg-ink text-paper hover:opacity-85'
-                      : 'border border-line text-ink hover:border-ink/40 hover:bg-mist'
-                  }`}
+                  href={release.windowsDownloadUrl}
+                  download
+                  className="inline-flex items-center justify-center rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-85"
                 >
-                  {link.label}
+                  {dict.projectDetail.downloadWindows}
                 </a>
-              )
-            )}
-          </div>
+              )}
+              {release.macosDownloadUrl && (
+                <a
+                  href={release.macosDownloadUrl}
+                  download
+                  className="inline-flex items-center justify-center rounded-full border border-line px-4 py-2.5 text-sm font-medium text-ink transition-all duration-300 ease-smooth hover:border-ink/40 hover:bg-mist"
+                >
+                  {dict.projectDetail.downloadMac}
+                </a>
+              )}
+
+              {/* Mobile — pas encore d'app native, cases grisées en attendant
+                  la décision d'architecture (Capacitor / React Native / natif). */}
+              <span
+                aria-disabled="true"
+                className="inline-flex cursor-not-allowed items-center justify-center rounded-full border border-line px-4 py-2.5 font-mono text-xs uppercase tracking-[0.06em] text-muted"
+              >
+                {dict.projectDetail.downloadAndroid} · {dict.common.comingSoon}
+              </span>
+              <span
+                aria-disabled="true"
+                className="inline-flex cursor-not-allowed items-center justify-center rounded-full border border-line px-4 py-2.5 font-mono text-xs uppercase tracking-[0.06em] text-muted"
+              >
+                {dict.projectDetail.downloadIos} · {dict.common.comingSoon}
+              </span>
+            </div>
+          )}
+
+          {/* Liens additionnels gérés à la main (site externe, changelog...),
+              indépendants du bouton de téléchargement ci-dessus. */}
+          {project.links.length > 0 && (
+            <div className={`flex flex-col gap-2.5 ${release ? 'mt-2.5' : ''}`}>
+              {project.links.map((link) =>
+                link.available === false ? (
+                  <span
+                    key={link.label}
+                    aria-disabled="true"
+                    className="inline-flex cursor-not-allowed items-center justify-center rounded-full border border-line px-4 py-2.5 font-mono text-xs uppercase tracking-[0.06em] text-muted"
+                  >
+                    {link.label} · {dict.common.comingSoon}
+                  </span>
+                ) : (
+                  <a
+                    key={link.label}
+                    href={link.href}
+                    target={!link.download && link.href.startsWith('http') ? '_blank' : undefined}
+                    rel="noreferrer"
+                    download={link.download ? true : undefined}
+                    className={`inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-300 ease-smooth ${
+                      link.kind === 'primary'
+                        ? 'bg-ink text-paper hover:opacity-85'
+                        : 'border border-line text-ink hover:border-ink/40 hover:bg-mist'
+                    }`}
+                  >
+                    {link.label}
+                  </a>
+                )
+              )}
+            </div>
+          )}
         </aside>
       </Container>
     </div>
