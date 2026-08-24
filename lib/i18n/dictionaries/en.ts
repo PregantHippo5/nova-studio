@@ -89,6 +89,9 @@ const en: typeof fr = {
     fixed: 'Fixed',
     removed: 'Removed',
     knownIssues: 'Known issues',
+	windowsHint: 'Run the downloaded file and follow the installer.',
+	macosHint: "Unzip the file, then drag Socle.app into your Applications folder. On first launch: right-click the app → Open (only needed once, macOS warns because the app isn't signed with an Apple developer account yet).",
+	installGuideLink: 'Detailed install guide',
   },
   journalPage: {
     eyebrow: 'Written as it happens',
@@ -159,6 +162,7 @@ const en: typeof fr = {
     logout: 'Log out',
     backHome: 'Back to home',
   },
+  installPage: { title: 'Install guide', comingSoon: "A detailed guide (screenshots, step-by-step) is coming soon. In the meantime, follow the hints shown under each download button.", },
 };
 
 export default en;

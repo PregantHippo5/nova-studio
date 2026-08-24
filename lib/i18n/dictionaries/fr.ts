@@ -87,6 +87,10 @@ const fr = {
     fixed: 'Corrigé',
     removed: 'Retiré',
     knownIssues: 'Problèmes connus',
+	windowsHint: "Lance le fichier téléchargé et suis l'installateur.",
+	macosHint: "Extrais le fichier .zip, puis glisse Socle.app dans ton dossier Applications. Au premier lancement : clic droit sur l'app → Ouvrir (nécessaire une seule fois, macOS avertit car l'app n'est pas encore signée par un compte développeur Apple).", 
+	installGuideLink: "Guide d'installation détaillé",
+	
   },
   journalPage: {
     eyebrow: 'Écrit au fil de l’eau',
@@ -158,6 +162,7 @@ const fr = {
     logout: 'Se déconnecter',
     backHome: "Retour à l'accueil",
   },
+  installPage: { title: "Guide d'installation", comingSoon: "Un guide détaillé (captures d'écran, étapes pas-à-pas) arrive bientôt. En attendant, suis les indications affichées sous chaque bouton de téléchargement.", },
 };
 
 export default fr;

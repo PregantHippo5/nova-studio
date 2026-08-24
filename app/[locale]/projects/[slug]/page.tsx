@@ -148,22 +148,40 @@ export default async function ProjectPage({ params }: { params: { locale: string
           {release && (
             <div className="flex flex-col gap-2.5">
               {release.windowsDownloadUrl && (
-                <a
-                  href={release.windowsDownloadUrl}
-                  download
-                  className="inline-flex items-center justify-center rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-85"
-                >
-                  {dict.projectDetail.downloadWindows}
-                </a>
+                <>
+                  <a
+                    href={release.windowsDownloadUrl}
+                    download
+                    className="inline-flex items-center justify-center rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-85"
+                  >
+                    {dict.projectDetail.downloadWindows}
+                  </a>
+                  <p className="text-xs leading-relaxed text-muted">
+                    {dict.projectDetail.windowsHint}
+                  </p>
+                </>
               )}
               {release.macosDownloadUrl && (
-                <a
-                  href={release.macosDownloadUrl}
-                  download
-                  className="inline-flex items-center justify-center rounded-full border border-line px-4 py-2.5 text-sm font-medium text-ink transition-all duration-300 ease-smooth hover:border-ink/40 hover:bg-mist"
+                <>
+                  <a
+                    href={release.macosDownloadUrl}
+                    download
+                    className="inline-flex items-center justify-center rounded-full border border-line px-4 py-2.5 text-sm font-medium text-ink transition-all duration-300 ease-smooth hover:border-ink/40 hover:bg-mist"
+                  >
+                    {dict.projectDetail.downloadMac}
+                  </a>
+                  <p className="text-xs leading-relaxed text-muted">
+                    {dict.projectDetail.macosHint}
+                  </p>
+                </>
+              )}
+              {(release.windowsDownloadUrl || release.macosDownloadUrl) && (
+                <Link
+                  href={`/${locale}/install`}
+                  className="text-xs font-medium text-ink underline underline-offset-2"
                 >
-                  {dict.projectDetail.downloadMac}
-                </a>
+                  {dict.projectDetail.installGuideLink}
+                </Link>
               )}
 
               {/* Mobile — pas encore d'app native, cases grisées en attendant
