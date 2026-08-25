@@ -163,3 +163,81 @@ on conflict (slug) do nothing;
 insert into public.roadmap_items (project, title_fr, title_en, stage, sort_order)
 values ('SOCLE', 'Rendre SOCLE facile à télécharger pour la rentrée', 'Make SOCLE easy to download before term starts', 'In Progress', 0)
 on conflict do nothing;
+
+create table public.training_jobs (
+  id uuid primary key default gen_random_uuid(),
+  created_by uuid references auth.users(id) not null,
+
+  status text not null default 'queued'
+    check (status in ('queued','starting','running','complete','failed','cancelled')),
+
+  dataset text not null default 'novaia_qa_5000_v3.jsonl'
+    check (dataset = 'novaia_qa_5000_v3.jsonl'),
+
+  epochs integer not null check (epochs > 0),
+  batch_size integer not null default 1 check (batch_size > 0),
+  gradient_accumulation integer not null default 8 check (gradient_accumulation > 0),
+  learning_rate numeric not null default 0.0001 check (learning_rate > 0),
+  checkpoint_interval integer not null default 100 check (checkpoint_interval > 0),
+
+  resume boolean not null default false,
+  resume_checkpoint text,
+
+  lora_repo text not null default 'novastudio123/novaia-checkpoints',
+  lora_path text not null default 'nova-lora',
+
+  current_step integer,
+  current_loss numeric,
+  kaggle_kernel_ref text,
+  kaggle_run_url text,
+
+  error_message text,
+  train_runtime_seconds numeric,
+
+  created_at timestamptz not null default now(),
+  started_at timestamptz,
+  finished_at timestamptz
+);
+
+alter table public.training_jobs enable row level security;
+
+create policy "admins can select training_jobs"
+  on public.training_jobs for select
+  using (public.is_admin());
+
+create policy "admins can insert training_jobs"
+  on public.training_jobs for insert
+  with check (public.is_admin());
+
+create policy "admins can update training_jobs"
+  on public.training_jobs for update
+  using (public.is_admin());
+
+create policy "admins can delete training_jobs"
+  on public.training_jobs for delete
+  using (public.is_admin());
+
+create unique index training_jobs_one_active
+  on public.training_jobs ((true))
+  where status in ('queued','starting','running');
+
+
+create table public.training_job_logs (
+  id bigint generated always as identity primary key,
+  job_id uuid not null references public.training_jobs(id) on delete cascade,
+  log_line text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.training_job_logs enable row level security;
+
+create policy "admins can select training_job_logs"
+  on public.training_job_logs for select
+  using (public.is_admin());
+
+create policy "admins can insert training_job_logs"
+  on public.training_job_logs for insert
+  with check (public.is_admin());
+
+create index training_job_logs_job_id_idx
+  on public.training_job_logs (job_id, created_at);
