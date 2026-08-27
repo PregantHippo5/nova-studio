@@ -17,10 +17,10 @@ export default function Footer({ locale, dict }: { locale: Locale; dict: Diction
     {
       title: dict.footer.elsewhere,
       links: [
-        { label: 'GitHub', href: 'https://github.com' },
-        { label: 'YouTube', href: 'https://youtube.com' },
-        { label: 'Spotify', href: 'https://spotify.com' },
-        { label: 'Twitch', href: 'https://twitch.tv' },
+        { label: 'YouTube', href: 'https://www.youtube.com/@Nova.Studio_dev' },
+        { label: 'Instagram', href: 'https://www.instagram.com/nova.studio_dev/' },
+        { label: 'TikTok', href: 'https://www.tiktok.com/@nova.studio_dev?lang=fr' },
+        { label: 'Contact', href: 'mailto:studionova071@gmail.com' },
       ],
     },
   ];

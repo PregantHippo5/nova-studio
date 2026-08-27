@@ -241,3 +241,27 @@ create policy "admins can insert training_job_logs"
 
 create index training_job_logs_job_id_idx
   on public.training_job_logs (job_id, created_at);
+  
+  
+  
+  create table public.kaggle_kernel_registry (
+  id integer primary key default 1 check (id = 1), -- une seule ligne, singleton
+  kernel_id bigint,
+  kernel_owner text not null default 'evansaccard',
+  kernel_slug text,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.kaggle_kernel_registry enable row level security;
+
+create policy "admins can select kaggle_kernel_registry"
+  on public.kaggle_kernel_registry for select
+  using (public.is_admin());
+
+create policy "admins can insert kaggle_kernel_registry"
+  on public.kaggle_kernel_registry for insert
+  with check (public.is_admin());
+
+create policy "admins can update kaggle_kernel_registry"
+  on public.kaggle_kernel_registry for update
+  using (public.is_admin());
