@@ -7,3 +7,14 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    outputFileTracingIncludes: {
+      '/api/admin/training/launch': ['./kaggle-scripts/train_novaia.py'],
+    },
+  },
+};
+
+module.exports = nextConfig;
