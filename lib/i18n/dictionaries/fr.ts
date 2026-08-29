@@ -88,7 +88,7 @@ const fr = {
     removed: 'Retiré',
     knownIssues: 'Problèmes connus',
 	windowsHint: "Lance le fichier téléchargé et suis l'installateur.",
-	macosHint: "Extrais le fichier .zip, puis glisse Socle.app dans ton dossier Applications. Au premier lancement : clic droit sur l'app → Ouvrir (nécessaire une seule fois, macOS avertit car l'app n'est pas encore signée par un compte développeur Apple).", 
+	macosHint: "Extrais le fichier .zip, puis glisse Socle.app dans ton dossier Applications. Au premier lancement, si macOS bloque l'ouverture : va dans Réglages Système → Confidentialité et sécurité, puis clique sur « Ouvrir quand même » à côté de la mention concernant Socle (nécessaire une seule fois, macOS avertit car l'app n'est pas encore signée par un compte développeur Apple).", 
 	installGuideLink: "Guide d'installation détaillé",
 	
   },
@@ -162,7 +162,59 @@ const fr = {
     logout: 'Se déconnecter',
     backHome: "Retour à l'accueil",
   },
-  installPage: { title: "Guide d'installation", comingSoon: "Un guide détaillé (captures d'écran, étapes pas-à-pas) arrive bientôt. En attendant, suis les indications affichées sous chaque bouton de téléchargement.", },
+  installPage: {
+    title: "Guide d'installation",
+    subtitle: 'Socle — application de bureau',
+    intro:
+      "Socle n'est pas encore signée par un compte développeur Apple ou un certificat Windows (ça coûte cher pour un petit studio) — du coup ton système affiche un avertissement au premier lancement. C'est normal, pas un signe que l'app est dangereuse. Voici comment passer cette étape, sur chaque système.",
+    currentVersion: 'Version actuelle',
+    noRelease: "Aucune version publiée pour l'instant.",
+    macosTitle: 'macOS',
+    macosSteps: [
+      {
+        title: 'Télécharge le fichier',
+        body: "Clique sur « Télécharger pour macOS » ci-dessus. Le fichier .zip arrive dans ton dossier Téléchargements.",
+      },
+      {
+        title: 'Extrais l’application',
+        body: "Double-clique sur le .zip téléchargé (certains navigateurs l'extraient automatiquement). Tu obtiens Socle.app.",
+      },
+      {
+        title: 'Déplace-la dans Applications',
+        body: 'Glisse Socle.app dans ton dossier Applications, comme pour n’importe quelle app macOS.',
+      },
+      {
+        title: 'Premier lancement : autorise l’ouverture',
+        body: "Si macOS bloque l'ouverture, va dans Réglages Système → Confidentialité et sécurité, puis clique sur « Ouvrir quand même » à côté de la mention concernant Socle. Cette étape n'est nécessaire qu'une seule fois.",
+      },
+    ],
+    macosTroubleTitle: '« Socle.app est endommagée et ne peut pas être ouverte »',
+    macosTroubleBody:
+      "Ce message (différent de l'avertissement normal) apparaît parfois sur les Mac Apple Silicon (M1/M2/M3) à cause de l'attribut de quarantaine posé automatiquement par le navigateur. Corrige-le en ouvrant l'app Terminal (Applications → Utilitaires → Terminal) et en collant la ligne suivante, puis Entrée :",
+    macosTroubleCommand: 'xattr -cr /Applications/Socle.app',
+    macosTroubleFooter: 'Relance ensuite Socle.app normalement (clic droit → Ouvrir).',
+    windowsTitle: 'Windows',
+    windowsSteps: [
+      {
+        title: 'Télécharge le fichier',
+        body: 'Clique sur « Télécharger pour Windows » ci-dessus pour récupérer le .exe.',
+      },
+      {
+        title: 'Lance l’installateur',
+        body: "Double-clique sur le fichier téléchargé. Windows SmartScreen affiche souvent « Windows a protégé votre ordinateur » — c'est la même raison que sur macOS (pas de certificat de signature payant).",
+      },
+      {
+        title: 'Autorise l’exécution',
+        body: 'Clique sur « Informations complémentaires », puis sur « Exécuter quand même ».',
+      },
+      {
+        title: 'Suis l’installateur',
+        body: 'Laisse-toi guider jusqu’au bout — Socle se lance automatiquement à la fin.',
+      },
+    ],
+    stillStuck: 'Toujours bloqué ?',
+    stillStuckBody: 'Écris-nous, on répond vite.',
+  },
 };
 
 export default fr;
