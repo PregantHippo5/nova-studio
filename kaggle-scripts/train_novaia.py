@@ -46,6 +46,44 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # Réduit la fragmentation mémoire CUDA
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
+# ========================================================================
+# INSTALLATION DES VERSIONS FIGÉES
+# ========================================================================
+#
+# Nécessaire car un kernel Kaggle poussé via l'API (SaveKernel) démarre
+# avec l'environnement de base de l'image Kaggle, qui n'a pas trl du
+# tout et des versions différentes des autres libs. Ceci remplace le
+# script de setup séparé qui faisait cette installation manuellement
+# avant chaque lancement CLI — désormais le script est autonome, dans
+# les deux modes (CLI et Remote Training).
+#
+# On ne touche PAS à torch : il est déjà présent et fonctionnel dans
+# l'image Kaggle, le réinstaller casserait la compatibilité CUDA.
+
+import subprocess
+import sys
+
+_PINNED_PACKAGES = [
+    "transformers==4.57.1",
+    "trl==0.23.1",
+    "peft==0.17.1",
+    "accelerate==1.10.1",
+    "bitsandbytes==0.48.1",
+    "huggingface_hub==0.35.3",
+]
+
+print("========================================")
+print("Installation des dépendances figées...")
+print("========================================")
+
+subprocess.run(
+    [sys.executable, "-m", "pip", "install", "-q", "--no-cache-dir", *_PINNED_PACKAGES],
+    check=True,
+)
+
+print("✅ Dépendances installées.")
+print()
+
 import argparse
 import json
 from pathlib import Path
