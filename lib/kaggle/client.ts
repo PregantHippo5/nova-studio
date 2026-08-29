@@ -137,7 +137,10 @@ export async function pushTrainingKernel(
     enableTpu: false,
     enableInternet: true,
     machineShape: 'NvidiaTeslaT4',
-    datasetDataSources: [],
+ // Dataset attaché explicitement — sans ça, /kaggle/input est vide
+    // et resolve_dataset_path() du script échoue (vérifié en conditions
+    // réelles : FileNotFoundError sans ce champ, dataset bien monté avec).
+    datasetDataSources: ['evansaccard/new-good'],
     competitionDataSources: [],
     kernelDataSources: [],
     modelDataSources: [],
