@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Container from '@/components/ui/Container';
 import StatusBadge from '@/components/ui/StatusBadge';
+import ProjectCoverMedia from '@/components/project/ProjectCoverMedia';
+import ScreenshotsCarousel from '@/components/project/ScreenshotsCarousel';
 import { getProject, getLatestRelease } from '@/lib/supabase/queries';
 import { isLocale, defaultLocale, Locale } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/dictionaries';
@@ -36,16 +38,17 @@ export default async function ProjectPage({ params }: { params: { locale: string
 
   return (
     <div className="pb-28">
-      <div
-        className="flex h-64 items-end md:h-80"
-        style={{
-          background: `linear-gradient(135deg, ${project.cover.gradient[0]}, ${project.cover.gradient[1]})`,
-        }}
+      <ProjectCoverMedia
+        gradient={project.cover.gradient}
+        videoUrl={project.cover.videoUrl}
+        posterUrl={project.cover.posterUrl}
       >
         <Container className="pb-10">
           <Link
             href={`/${locale}/projects`}
-            className="mb-6 inline-flex items-center gap-1.5 text-sm text-ink/60 hover:text-ink"
+            className={`mb-6 inline-flex items-center gap-1.5 text-sm ${
+              project.cover.videoUrl ? 'text-white/70 hover:text-white' : 'text-ink/60 hover:text-ink'
+            }`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M11 18l-6-6 6-6" />
@@ -53,14 +56,24 @@ export default async function ProjectPage({ params }: { params: { locale: string
             {dict.projectDetail.allProjects}
           </Link>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-[0.7rem] uppercase tracking-[0.08em] text-ink/50">
+            <span
+              className={`font-mono text-[0.7rem] uppercase tracking-[0.08em] ${
+                project.cover.videoUrl ? 'text-white/60' : 'text-ink/50'
+              }`}
+            >
               {dict.projectsPage.categories[project.category]}
             </span>
             <StatusBadge status={project.status} dict={dict} />
           </div>
-          <h1 className="mt-3 text-display-2 font-semibold text-ink balance">{project.name}</h1>
+          <h1 className="mt-3 text-display-2 font-semibold balance">{project.name}</h1>
         </Container>
-      </div>
+      </ProjectCoverMedia>
+
+      {project.screenshots && project.screenshots.length > 0 && (
+        <Container className="pt-14">
+          <ScreenshotsCarousel screenshots={project.screenshots} />
+        </Container>
+      )}
 
       <Container className="grid gap-16 pt-14 lg:grid-cols-[1fr_320px]">
         <div>

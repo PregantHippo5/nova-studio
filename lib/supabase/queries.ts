@@ -36,7 +36,10 @@ function mapProjectRow(row: any, versionRows: any[] = []): Project {
     cover: {
       gradient: [row.cover_gradient_start, row.cover_gradient_end],
       label: row.cover_label,
+      videoUrl: row.cover_video_url ?? undefined,
+      posterUrl: row.cover_poster_url ?? undefined,
     },
+    screenshots: row.screenshots && row.screenshots.length > 0 ? row.screenshots : undefined,
     features: localizedOrUndefined(row.features_fr ?? [], row.features_en ?? []),
     links: row.links ?? [],
     history,

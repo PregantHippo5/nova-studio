@@ -17,6 +17,9 @@ create table if not exists public.projects (
   cover_gradient_start text not null default '#EDEBFF',
   cover_gradient_end text not null default '#F6F5FF',
   cover_label text not null default '',
+  cover_video_url text,
+  cover_poster_url text,
+  screenshots jsonb not null default '[]', -- [{url, alt?}] — utilisées en hero (carrousel) quand cover_video_url est vide, et toujours affichées sous la vidéo/gradient si présentes
   features_fr text[] not null default '{}',
   features_en text[] not null default '{}',
   links jsonb not null default '[]', -- [{label, href, kind, download?, available?}]

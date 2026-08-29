@@ -25,6 +25,11 @@ export interface ProjectVersionEntry {
   knownIssues?: Localized<string[]>;
 }
 
+export interface ProjectScreenshot {
+  url: string;
+  alt?: string;
+}
+
 export interface Project {
   slug: string;
   name: string;
@@ -33,7 +38,13 @@ export interface Project {
   tagline: Localized<string>;
   description: Localized<string>;
   currentVersion?: string;
-  cover: { gradient: [string, string]; label: string };
+  cover: {
+    gradient: [string, string];
+    label: string;
+    videoUrl?: string;
+    posterUrl?: string;
+  };
+  screenshots?: ProjectScreenshot[];
   features?: Localized<string[]>;
   links: ProjectLink[];
   history?: ProjectVersionEntry[];

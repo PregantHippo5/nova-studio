@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Project, ProjectCategory, ProjectStatus, ProjectLink } from '@/lib/types';
+import { Project, ProjectCategory, ProjectStatus, ProjectLink, ProjectScreenshot } from '@/lib/types';
 
 const categories: ProjectCategory[] = ['Software', 'Games', 'Music', 'Videos'];
 const statuses: ProjectStatus[] = ['Live', 'In development', 'Paused', 'Archived'];
@@ -35,6 +35,9 @@ export default function ProjectForm({ project }: { project?: Project }) {
   const [gradientStart, setGradientStart] = useState(project?.cover.gradient[0] ?? '#EDEBFF');
   const [gradientEnd, setGradientEnd] = useState(project?.cover.gradient[1] ?? '#F6F5FF');
   const [coverLabel, setCoverLabel] = useState(project?.cover.label ?? project?.name ?? '');
+  const [coverVideoUrl, setCoverVideoUrl] = useState(project?.cover.videoUrl ?? '');
+  const [coverPosterUrl, setCoverPosterUrl] = useState(project?.cover.posterUrl ?? '');
+  const [screenshots, setScreenshots] = useState<ProjectScreenshot[]>(project?.screenshots ?? []);
   const [featuresFr, setFeaturesFr] = useState((project?.features?.fr ?? []).join('\n'));
   const [featuresEn, setFeaturesEn] = useState((project?.features?.en ?? []).join('\n'));
   const [links, setLinks] = useState<ProjectLink[]>(
@@ -53,6 +56,13 @@ export default function ProjectForm({ project }: { project?: Project }) {
   const addLink = () =>
     setLinks((prev) => [...prev, { label: '', href: '#', kind: 'secondary', available: true }]);
   const removeLink = (index: number) => setLinks((prev) => prev.filter((_, i) => i !== index));
+
+  const updateScreenshot = (index: number, patch: Partial<ProjectScreenshot>) => {
+    setScreenshots((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+  };
+  const addScreenshot = () => setScreenshots((prev) => [...prev, { url: '', alt: '' }]);
+  const removeScreenshot = (index: number) =>
+    setScreenshots((prev) => prev.filter((_, i) => i !== index));
 
   // Note : l'upload du fichier .exe/.zip/.dmg de SOCLE ne se fait plus ici —
   // voir /admin/releases, qui écrit directement dans app_releases (partagée
@@ -76,6 +86,9 @@ export default function ProjectForm({ project }: { project?: Project }) {
       cover_gradient_start: gradientStart,
       cover_gradient_end: gradientEnd,
       cover_label: coverLabel,
+      cover_video_url: coverVideoUrl.trim() || null,
+      cover_poster_url: coverPosterUrl.trim() || null,
+      screenshots: screenshots.filter((s) => s.url.trim().length > 0),
       features_fr: featuresFr.split('\n').map((s) => s.trim()).filter(Boolean),
       features_en: featuresEn.split('\n').map((s) => s.trim()).filter(Boolean),
       links: links.filter((l) => l.label.trim().length > 0),
@@ -277,6 +290,72 @@ export default function ProjectForm({ project }: { project?: Project }) {
 			désormais depuis <a href="/admin/releases" className="underline">/admin/releases</a>,
 			pas ici.
 		</p>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="mb-1.5 block text-[0.8rem] font-medium">
+              Vidéo de couverture (mp4/webm)
+            </label>
+            <input
+              placeholder="/videos/socle-ba-web.mp4"
+              value={coverVideoUrl}
+              onChange={(e) => setCoverVideoUrl(e.target.value)}
+              className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:outline-2 focus:outline-accent"
+            />
+            <p className="mt-1 text-xs text-muted">
+              Si renseignée, remplace le dégradé en boucle (muet, autoplay) dans le hero.
+            </p>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[0.8rem] font-medium">
+              Image d'attente de la vidéo (poster)
+            </label>
+            <input
+              placeholder="/images/projects/socle/today.webp"
+              value={coverPosterUrl}
+              onChange={(e) => setCoverPosterUrl(e.target.value)}
+              className="w-full rounded-lg border border-line px-3 py-2 text-sm focus:outline-2 focus:outline-accent"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-[0.8rem] font-medium">
+            Screenshots (carrousel sous le hero)
+          </label>
+          <div className="flex flex-col gap-2">
+            {screenshots.map((shot, i) => (
+              <div key={i} className="grid grid-cols-[1.4fr_1.4fr_auto] items-center gap-2">
+                <input
+                  placeholder="URL de l'image"
+                  value={shot.url}
+                  onChange={(e) => updateScreenshot(i, { url: e.target.value })}
+                  className="rounded-lg border border-line px-2.5 py-1.5 text-xs"
+                />
+                <input
+                  placeholder="Texte alternatif (accessibilité)"
+                  value={shot.alt ?? ''}
+                  onChange={(e) => updateScreenshot(i, { alt: e.target.value })}
+                  className="rounded-lg border border-line px-2.5 py-1.5 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeScreenshot(i)}
+                  className="rounded-lg border border-line px-2.5 py-1.5 text-xs text-muted hover:text-ink"
+                >
+                  Retirer
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={addScreenshot}
+            className="mt-2 text-xs font-medium text-ink underline underline-offset-2"
+          >
+            + Ajouter un screenshot
+          </button>
+        </div>
 
         <div>
           <label className="mb-2 block text-[0.8rem] font-medium">Liens</label>
