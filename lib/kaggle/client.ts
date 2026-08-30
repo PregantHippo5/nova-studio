@@ -1,27 +1,5 @@
-// lib/kaggle/client.ts
-//
-// Client Kaggle basé sur un comportement VÉRIFIÉ EN CONDITIONS RÉELLES
-// (tests manuels via PowerShell contre l'API de production), pas
-// seulement déduit du code source :
-//
-//   - Auth : Bearer token obligatoire (KAGGLE_API_TOKEN). Le Basic Auth
-//     (username/key Legacy) a été testé et rejeté (401/403 incohérents)
-//     sur cette API précise.
-//   - Le compte propriétaire du kernel est TOUJOURS celui du token
-//     utilisé, quoi que contienne `slug` dans la requête — Kaggle
-//     ignore le owner fourni dans `slug` et prend celui du token.
-//   - Pour METTRE À JOUR un kernel existant (nouvelle version), il faut
-//     fournir son `id` (kernelId numérique, obtenu à la création). Sans
-//     `id`, un titre déjà utilisé renvoie 409 ALREADY_EXISTS au lieu de
-//     créer une nouvelle version.
-//
-// Ce fichier ne gère QUE le transport Kaggle. Le kernelId doit être
-// persisté par l'appelant (Supabase) après le premier push, puisque
-// rien ne permet de le retrouver de façon fiable sinon.
-
 const KAGGLE_API_BASE = 'https://api.kaggle.com/v1';
 
-// Compte réel confirmé (celui du token API, pas un nom arbitraire).
 export const NOVAIA_KERNEL_OWNER = 'evansaccard';
 const NOVAIA_KERNEL_TITLE = 'NovaIA Remote Training';
 
@@ -43,6 +21,13 @@ export interface TrainingConfig {
   resume_checkpoint: string | null;
   lora_repo: string;
   lora_path: string;
+  // Nécessaire car un kernel poussé via l'API n'a pas le login HF
+  // fait par une cellule notebook séparée (comme sur vos runs manuels).
+  // Réutilise le même mécanisme huggingface_hub.login() que vous
+  // utilisiez déjà, appelé cette fois depuis train_novaia.py lui-même.
+  // ⚠️ Ce token se retrouve dans le code source du kernel Kaggle
+  // (privé, mais visible dans l'historique des versions).
+  hf_token: string;
 }
 
 export interface PushKernelResult {
@@ -109,16 +94,6 @@ export function injectTrainingConfig(scriptSource: string, config: TrainingConfi
   return `${configBlock}\n${scriptSource}`;
 }
 
-/**
- * Pousse une nouvelle version du kernel NovaIA.
- *
- * - Premier appel : existingKernelId = null → Kaggle CRÉE le kernel,
- *   la réponse contient le kernelId à conserver pour tous les appels
- *   suivants.
- * - Appels suivants : existingKernelId = celui obtenu au premier push
- *   → Kaggle met à jour la MÊME version (versionNumber incrémenté).
- *   Sans cet id, un titre déjà pris renvoie 409 ALREADY_EXISTS.
- */
 export async function pushTrainingKernel(
   credentials: KaggleCredentials,
   scriptSource: string,
@@ -137,7 +112,7 @@ export async function pushTrainingKernel(
     enableTpu: false,
     enableInternet: true,
     machineShape: 'NvidiaTeslaT4',
- // Dataset attaché explicitement — sans ça, /kaggle/input est vide
+    // Dataset attaché explicitement — sans ça, /kaggle/input est vide
     // et resolve_dataset_path() du script échoue (vérifié en conditions
     // réelles : FileNotFoundError sans ce champ, dataset bien monté avec).
     datasetDataSources: ['evansaccard/new-good'],
@@ -190,13 +165,6 @@ function mapKaggleStatus(status: string): KaggleDerivedStatus {
   }
 }
 
-/**
- * ⚠️ Non re-testé après la découverte du problème d'auth : le test
- * initial de GetKernelSessionStatus (avec Basic Auth) avait renvoyé un
- * 403 "users.get denied". À revalider avec le Bearer token avant de
- * faire confiance à cette fonction en production (voir étape de test
- * ci-dessous).
- */
 export async function getTrainingKernelStatus(
   credentials: KaggleCredentials,
   kernelOwner: string,

@@ -106,7 +106,7 @@ from peft import (
 
 from trl import SFTTrainer, SFTConfig
 
-from huggingface_hub import HfApi, snapshot_download
+from huggingface_hub import HfApi, snapshot_download, login
 
 
 SYSTEM_PROMPT = (
@@ -497,6 +497,29 @@ def main():
 
     remote_config = load_remote_config()
 
+    # ====================================================================
+    # AUTHENTIFICATION HUGGING FACE
+    #
+    # Réutilise exactement le mécanisme de login() utilisé jusqu'ici dans
+    # une cellule notebook séparée avant chaque run manuel — ce n'est pas
+    # un nouveau système, juste le même appel déplacé ici parce qu'un
+    # kernel poussé via l'API n'a pas cette cellule de login préalable.
+    # Sans elle, HfApi() tourne sans identifiants -> 401 Unauthorized.
+    # ====================================================================
+
+    if remote_config is not None and remote_config.get("hf_token"):
+        login(token=remote_config["hf_token"], add_to_git_credential=False)
+        print("✅ Authentification Hugging Face effectuée (Remote Training).")
+        print()
+
+    # ====================================================================
+    # FUSION CLI / CONFIGURATION DISTANTE
+    #
+    # Si NOVAIA_TRAINING_CONFIG est présente (Remote Training), ses
+    # valeurs priment pour les champs qu'elle définit. En CLI classique
+    # (remote_config is None), rien ne change par rapport à avant.
+    # ====================================================================
+
     if remote_config is not None:
         epochs = remote_config["epochs"]
         batch_size = remote_config.get("batch_size", args.batch_size)
@@ -509,6 +532,9 @@ def main():
         )
         resume_requested = bool(remote_config.get("resume", False))
         resume_checkpoint_name = remote_config.get("resume_checkpoint")
+        # Le schema Remote Training n'a qu'un seul repo HF (lora_repo) :
+        # il sert à la fois aux checkpoints intermédiaires et au LoRA
+        # final, ce qui correspond à l'usage réel (même repo pour les deux).
         hf_repo = remote_config.get("lora_repo")
         lora_repo = remote_config.get("lora_repo")
         lora_path = remote_config.get("lora_path", "nova-lora")
@@ -736,118 +762,4 @@ def main():
 
     # ========================================
     # REPRISE CHECKPOINT
-    # ========================================
-
-    checkpoint = None
-
-    if resume_requested and resume_checkpoint_name:
-
-        if not hf_repo:
-            raise ValueError(
-                "❌ resume_checkpoint fourni mais aucun repo HF "
-                "(--hf-repo / lora_repo) pour aller le chercher."
-            )
-
-        checkpoint = download_checkpoint_from_hub(
-            repo_id=hf_repo,
-            checkpoint_name=resume_checkpoint_name,
-            local_root=Path(args.out),
-        )
-
-    elif resume_requested:
-
-        checkpoint = find_latest_checkpoint(
-            args.out
-        )
-
-
-    if checkpoint is not None:
-
-        print()
-        print("========================================")
-        print("CHECKPOINT TROUVÉ")
-        print("========================================")
-        print(
-            "Reprise depuis :",
-            checkpoint
-        )
-        print()
-
-
-        trainer.train(
-            resume_from_checkpoint=str(checkpoint)
-        )
-
-    else:
-
-        if resume_requested:
-
-            print()
-            print("Aucun checkpoint trouvé.")
-            print("Démarrage d'un nouvel entraînement.")
-            print()
-
-        else:
-
-            print()
-            print("Nouvel entraînement.")
-            print()
-
-
-        trainer.train()
-
-
-    # ========================================
-    # SAUVEGARDE FINALE (locale)
-    # ========================================
-
-    print()
-    print("========================================")
-    print("Sauvegarde finale...")
-    print("========================================")
-
-
-    out = Path(args.out)
-
-    out.mkdir(
-        exist_ok=True,
-        parents=True
-    )
-
-
-    model.save_pretrained(
-        out
-    )
-
-
-    tokenizer.save_pretrained(
-        out
-    )
-
-
-    print()
-    print("========================================")
-    print("        ENTRAÎNEMENT TERMINÉ")
-    print("========================================")
-    print()
-    print(
-        "LoRA disponible dans:",
-        out
-    )
-    print()
-
-
-    # ========================================
-    # UPLOAD LORA FINAL (opt-in, remplace nova-lora/)
-    # ========================================
-
-    if lora_repo:
-        upload_final_lora(
-            local_dir=out,
-            repo_id=lora_repo,
-            path_in_repo=lora_path,
-        )
-
-
-if __name__ == "__main__":
-    main()
+    #

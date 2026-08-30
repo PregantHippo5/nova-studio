@@ -1,5 +1,3 @@
-// app/api/admin/training/launch/route.ts
-
 import { promises as fs } from 'fs';
 import path from 'path';
 import { requireAdmin } from '@/lib/requireAdmin';
@@ -62,6 +60,15 @@ export async function POST(request: Request) {
     );
   }
 
+  const hfToken = process.env.HF_TOKEN;
+
+  if (!hfToken) {
+    return Response.json(
+      { error: "HF_TOKEN manquant côté serveur (variable d'environnement Vercel)." },
+      { status: 500 }
+    );
+  }
+
   const { data: job, error: jobError } = await supabaseAdmin
     .from('training_jobs')
     .select(
@@ -120,6 +127,7 @@ export async function POST(request: Request) {
     resume_checkpoint: job.resume_checkpoint,
     lora_repo: job.lora_repo,
     lora_path: job.lora_path,
+    hf_token: hfToken,
   };
 
   let pushResult;
