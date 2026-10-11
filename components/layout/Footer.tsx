@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Container from '@/components/ui/Container';
 import { Locale } from '@/lib/i18n/config';
 import { Dictionary } from '@/lib/i18n/dictionaries';
+import { CONTACT_EMAIL, SOCIALS } from '@/lib/site';
 
 export default function Footer({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const columns = [
@@ -9,18 +10,17 @@ export default function Footer({ locale, dict }: { locale: Locale; dict: Diction
       title: dict.footer.studio,
       links: [
         { label: dict.nav.projects, href: `/${locale}/projects` },
+        { label: dict.nav.learn, href: `/${locale}/learn` },
+        { label: dict.nav.games, href: `/${locale}/games` },
         { label: dict.nav.journal, href: `/${locale}/journal` },
-        { label: dict.nav.roadmap, href: `/${locale}/roadmap` },
         { label: dict.nav.about, href: `/${locale}/about` },
       ],
     },
     {
       title: dict.footer.elsewhere,
       links: [
-        { label: 'YouTube', href: 'https://www.youtube.com/@Nova.Studio_dev' },
-        { label: 'Instagram', href: 'https://www.instagram.com/nova.studio_dev/' },
-        { label: 'TikTok', href: 'https://www.tiktok.com/@nova.studio_dev?lang=fr' },
-        { label: 'Contact', href: 'mailto:studionova071@gmail.com' },
+        ...SOCIALS.map((social) => ({ label: social.name, href: social.href })),
+        { label: dict.footer.contact, href: `mailto:${CONTACT_EMAIL}` },
       ],
     },
   ];
@@ -44,16 +44,27 @@ export default function Footer({ locale, dict }: { locale: Locale; dict: Diction
               {col.title}
             </p>
             <ul className="mt-4 flex flex-col gap-3">
-              {col.links.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-ink/80 transition-colors hover:text-ink"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
+              {col.links.map((link) => {
+                const external = link.href.startsWith('http');
+                const className = 'text-sm text-ink/80 transition-colors hover:text-ink';
+                return (
+                  <li key={link.label}>
+                    {external ? (
+                      <a href={link.href} target="_blank" rel="noopener noreferrer" className={className}>
+                        {link.label}
+                      </a>
+                    ) : link.href.startsWith('mailto:') ? (
+                      <a href={link.href} className={className}>
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link href={link.href} className={className}>
+                        {link.label}
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         ))}

@@ -5,12 +5,14 @@ const en: typeof fr = {
     comingSoon: 'Coming soon',
   },
   meta: {
-    title: 'Nova Studio — Independent digital studio',
+    title: 'Nova Studio — Projects, simulations and games',
     description:
-      'Nova Studio is an independent studio building digital products, games, music and video — free, made carefully.',
+      'Nova Studio is two students in French preparatory classes building serious projects, interactive simulations to learn from, and games — free, made carefully.',
   },
   nav: {
     projects: 'Projects',
+    learn: 'Learn',
+    games: 'Games',
     journal: 'Journal',
     roadmap: 'Roadmap',
     support: 'Support',
@@ -23,11 +25,44 @@ const en: typeof fr = {
     Archived: 'Archived',
   },
   hero: {
-    badge: 'Independent studio',
-    title: 'We build digital products, creative experiences and tools.',
-    lead: 'Nova Studio is a small, independent studio. We design software, games, music and video with the same care — released free, maintained openly, and built to last longer than a trend.',
+    badge: 'Made by two prépa students',
+    title: 'Serious projects, simulations to understand, games to unwind.',
+    lead: 'Nova Studio is two students in French preparatory classes (prépa) building real software, interactive simulations and a few games outside of class. Everything is free, and everything is built in the open.',
     explore: 'Explore projects',
-    support: 'Support Nova Studio',
+    learn: 'See the simulations',
+    scroll: 'Scroll',
+  },
+  manifesto: {
+    eyebrow: 'The idea',
+    text: 'A base of serious projects, an educational side to understand by playing with things, and a side of games for fun. All of it built between prépa classes, free and in public.',
+  },
+  pillars: [
+    {
+      key: 'projects',
+      eyebrow: 'The foundation',
+      title: 'Serious projects',
+      text: 'Software designed like real products: tracked, versioned, documented. It is the backbone of the studio, starting with SOCLE.',
+      cta: 'See the projects',
+    },
+    {
+      key: 'learn',
+      eyebrow: 'The educational side',
+      title: 'Understand by doing',
+      text: 'Interactive simulations to watch a concept move instead of just reading about it: change a parameter, see what happens.',
+      cta: 'Explore Learn',
+    },
+    {
+      key: 'games',
+      eyebrow: 'The fun side',
+      title: 'Games to unwind',
+      text: 'Small, no-fuss games made for a break between study sessions. No ads, no in-app purchases.',
+      cta: 'See the games',
+    },
+  ],
+  follow: {
+    eyebrow: 'Follow the studio',
+    title: 'We also show our work on video.',
+    text: 'Behind the scenes, progress and news: find us on our channels.',
   },
   featured: {
     eyebrow: 'Selected work',
@@ -62,9 +97,10 @@ const en: typeof fr = {
   },
   footer: {
     tagline:
-      'An independent studio building digital products, games, music and video — made carefully, shared freely.',
+      'Two prépa students building serious projects, simulations to learn from, and games — made carefully, shared freely.',
     studio: 'Studio',
     elsewhere: 'Elsewhere',
+    contact: 'Contact',
     copyright: 'Nova Studio. All rights reserved.',
     builtWith: 'Built with Next.js, in the open.',
   },
@@ -90,7 +126,7 @@ const en: typeof fr = {
     removed: 'Removed',
     knownIssues: 'Known issues',
 	windowsHint: 'Run the downloaded file and follow the installer.',
-	macosHint: "Unzip the file, then drag Socle.app into your Applications folder. On first launch, if macOS blocks it: go to System Settings → Privacy & Security, then click \"Open Anyway\" next to the mention about Socle (only needed once, macOS warns because the app isn't signed with an Apple developer account yet).",
+	macosHint: "Unzip the file, then drag Socle.app into your Applications folder. On first launch: right-click the app → Open (only needed once, macOS warns because the app isn't signed with an Apple developer account yet).",
 	installGuideLink: 'Detailed install guide',
   },
   journalPage: {
@@ -127,15 +163,71 @@ const en: typeof fr = {
     eyebrow: 'Why this exists',
     title: 'About Nova Studio',
     paragraphs: [
-      'Nova Studio started as a simple frustration: most personal projects either stay unfinished or ship without the care they deserve. This studio exists to do the opposite — to treat side projects with the same discipline as a real product.',
+      'Nova Studio started between prépa classes, from a simple frustration: most personal projects either stay unfinished or ship without the care they deserve. We are two students, and this studio exists to do the opposite — to treat our side projects with the same discipline as a real product.',
       "There is no roadmap dictated by a business plan, no investors to answer to, and no ads to run. That freedom is the point. It means every decision — from a button's border radius to which project ships next — gets made for the same reason: because it makes the thing better.",
-      'Nova Studio builds software, games, music and video under one name because, in practice, they come from the same process: notice something worth making, spend the time it deserves, and share it plainly.',
+      'The studio rests on three pillars: a base of serious projects, an educational side with simulations to understand by doing, and a side of games for fun. It all comes from the same process: notice something worth making, spend the time it deserves, and share it plainly.',
     ],
     values: [
       { title: 'Useful first', text: 'Every project starts from a real, specific problem worth solving — not a trend worth chasing.' },
       { title: 'Elegant by default', text: "Good design is not an afterthought applied at the end. It shapes the decisions from the first one." },
       { title: 'Accessible to everyone', text: 'Nothing Nova Studio makes sits behind a paywall. Quality and price are not the same axis.' },
     ],
+  },
+  learnPage: {
+    eyebrow: 'The educational side',
+    title: 'Learn',
+    description:
+      "Interactive simulations to understand by doing. Nothing is online yet: here is what we have in mind.",
+    items: [
+      {
+        tag: 'Optics',
+        title: 'Refraction and lenses',
+        text: 'Change the angle or the index and watch the ray bend in real time.',
+      },
+      {
+        tag: 'Mechanics',
+        title: 'Oscillators and pendulums',
+        text: 'Play with mass, stiffness and damping to see how the motion changes.',
+      },
+      {
+        tag: 'Waves',
+        title: 'Superposition and interference',
+        text: 'Add two waves together and see when they reinforce or cancel each other.',
+      },
+      {
+        tag: 'Maths',
+        title: 'Functions and derivatives',
+        text: 'Plot a function and follow its tangent by moving a point.',
+      },
+    ],
+  },
+  gamesPage: {
+    eyebrow: 'The fun side',
+    title: 'Games',
+    description:
+      'Small games to unwind. Nothing is playable yet: here is what we have in mind.',
+    items: [
+      {
+        tag: 'Arcade',
+        title: 'A paddle game',
+        text: 'A true classic, playable in a minute.',
+      },
+      {
+        tag: 'Puzzle',
+        title: 'A logic puzzle',
+        text: 'Short levels that warm up the brain without wearing it out.',
+      },
+      {
+        tag: 'Reflexes',
+        title: 'A speed challenge',
+        text: 'Beat your own record, nothing more.',
+      },
+    ],
+  },
+  ideaBox: {
+    title: 'Got a topic in mind?',
+    text: 'Write to us and tell us what you would like to see here.',
+    button: 'Write to us',
   },
   notFound: {
     code: '404',
@@ -162,59 +254,7 @@ const en: typeof fr = {
     logout: 'Log out',
     backHome: 'Back to home',
   },
-  installPage: {
-    title: 'Install guide',
-    subtitle: 'Socle — desktop app',
-    intro:
-      "Socle isn't signed with an Apple developer account or a Windows certificate yet (those cost money for a small studio) — so your system shows a warning on first launch. That's expected, not a sign the app is unsafe. Here's how to get past it, on each platform.",
-    currentVersion: 'Current version',
-    noRelease: 'No release published yet.',
-    macosTitle: 'macOS',
-    macosSteps: [
-      {
-        title: 'Download the file',
-        body: 'Click "Download for macOS" above. The .zip lands in your Downloads folder.',
-      },
-      {
-        title: 'Extract the app',
-        body: 'Double-click the downloaded .zip (some browsers extract it automatically). You get Socle.app.',
-      },
-      {
-        title: 'Move it to Applications',
-        body: 'Drag Socle.app into your Applications folder, like any other macOS app.',
-      },
-      {
-        title: 'First launch: allow it to open',
-        body: 'If macOS blocks it, go to System Settings → Privacy & Security, then click "Open Anyway" next to the mention about Socle. This is only needed once.',
-      },
-    ],
-    macosTroubleTitle: '"Socle.app is damaged and can\'t be opened"',
-    macosTroubleBody:
-      "This message (different from the normal warning) sometimes shows up on Apple Silicon Macs (M1/M2/M3) because of a quarantine flag the browser adds automatically. Fix it by opening the Terminal app (Applications → Utilities → Terminal), pasting the line below, then pressing Enter:",
-    macosTroubleCommand: 'xattr -cr /Applications/Socle.app',
-    macosTroubleFooter: 'Then launch Socle.app normally (right-click → Open).',
-    windowsTitle: 'Windows',
-    windowsSteps: [
-      {
-        title: 'Download the file',
-        body: 'Click "Download for Windows" above to get the .exe.',
-      },
-      {
-        title: 'Run the installer',
-        body: 'Double-click the downloaded file. Windows SmartScreen often shows "Windows protected your PC" — same reason as on macOS (no paid signing certificate).',
-      },
-      {
-        title: 'Allow it to run',
-        body: 'Click "More info", then "Run anyway".',
-      },
-      {
-        title: 'Follow the installer',
-        body: 'Follow the steps to the end — Socle launches automatically once it\'s done.',
-      },
-    ],
-    stillStuck: 'Still stuck?',
-    stillStuckBody: 'Reach out — we reply fast.',
-  },
+  installPage: { title: 'Install guide', comingSoon: "A detailed guide (screenshots, step-by-step) is coming soon. In the meantime, follow the hints shown under each download button.", },
 };
 
 export default en;

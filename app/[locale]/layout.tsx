@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import SetHtmlLang from '@/components/layout/SetHtmlLang';
+import ScrollProgress from '@/components/motion/ScrollProgress';
 import { locales, isLocale, defaultLocale, Locale } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 
@@ -40,6 +41,7 @@ export default function LocaleLayout({
   return (
     <>
       <SetHtmlLang locale={locale} />
+      <ScrollProgress />
       <Navbar locale={locale} dict={dict} />
       <main className="flex-1">{children}</main>
       <Footer locale={locale} dict={dict} />

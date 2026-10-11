@@ -21,10 +21,14 @@ export default function ProjectsGrid({
 
   const filtered = active === 'All' ? projects : projects.filter((p) => p.category === active);
 
+  // On n'affiche que les filtres qui contiennent vraiment des projets (plus de « Musique » vide).
+  const used = new Set(projects.map((p) => p.category));
+  const visibleCategories = categories.filter((cat) => cat === 'All' || used.has(cat));
+
   return (
     <div>
       <div className="flex flex-wrap gap-2">
-        {categories.map((cat) => (
+        {visibleCategories.map((cat) => (
           <button
             key={cat}
             onClick={() => setActive(cat)}

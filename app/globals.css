@@ -79,3 +79,13 @@ body {
 .balance {
   text-wrap: balance;
 }
+
+/* Quadrillage discret du hero, estompé vers les bords. */
+.hero-grid {
+  background-image:
+    linear-gradient(to right, rgb(var(--line)) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(var(--line)) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 25%, transparent 75%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 25%, transparent 75%);
+}

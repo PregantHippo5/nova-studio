@@ -3,12 +3,14 @@ const fr = {
     comingSoon: 'Bientôt disponible',
   },
   meta: {
-    title: 'Nova Studio — Studio numérique indépendant',
+    title: 'Nova Studio — Projets, simulations et jeux',
     description:
-      'Nova Studio est un studio indépendant qui conçoit des produits numériques, des jeux, de la musique et des vidéos — gratuits, faits avec soin.',
+      'Nova Studio, ce sont deux étudiants de prépa qui construisent des projets sérieux, des simulations interactives pour apprendre et des jeux — gratuits, faits avec soin.',
   },
   nav: {
     projects: 'Projets',
+    learn: 'Apprendre',
+    games: 'Jeux',
     journal: 'Journal',
     roadmap: 'Roadmap',
     support: 'Soutenir',
@@ -21,11 +23,44 @@ const fr = {
     Archived: 'Archivé',
   },
   hero: {
-    badge: 'Studio indépendant',
-    title: 'Nous créons des produits numériques, des expériences et des outils.',
-    lead: "Nova Studio est un petit studio indépendant. Nous concevons logiciels, jeux, musique et vidéos avec le même soin — publiés gratuitement, entretenus ouvertement, pensés pour durer plus longtemps qu'une tendance.",
+    badge: 'Fait par deux étudiants de prépa',
+    title: 'Des projets sérieux, des simulations pour comprendre, des jeux pour décompresser.',
+    lead: "Nova Studio, c'est deux étudiants de classe prépa qui construisent, en dehors des cours, de vrais logiciels, des simulations interactives et quelques jeux. Tout est gratuit, et tout avance au grand jour.",
     explore: 'Découvrir les projets',
-    support: 'Soutenir Nova Studio',
+    learn: 'Voir les simulations',
+    scroll: 'Défiler',
+  },
+  manifesto: {
+    eyebrow: 'Le principe',
+    text: "Un socle de projets sérieux, une part pédagogique pour comprendre en manipulant, et une part de jeux pour le plaisir. Le tout construit entre deux cours de prépa, gratuit et en public.",
+  },
+  pillars: [
+    {
+      key: 'projects',
+      eyebrow: 'Le socle',
+      title: 'Des projets sérieux',
+      text: "Des logiciels pensés comme de vrais produits : suivis, versionnés, documentés. C'est la colonne vertébrale du studio, à commencer par SOCLE.",
+      cta: 'Voir les projets',
+    },
+    {
+      key: 'learn',
+      eyebrow: 'Le côté pédagogique',
+      title: 'Comprendre en manipulant',
+      text: "Des simulations interactives pour voir un concept bouger plutôt que le lire : on change un paramètre, on observe ce qui se passe.",
+      cta: 'Explorer Apprendre',
+    },
+    {
+      key: 'games',
+      eyebrow: 'Le côté fun',
+      title: 'Des jeux pour décompresser',
+      text: "Des petits jeux sans prise de tête, faits pour souffler entre deux révisions. Pas de pub, pas d'achat intégré.",
+      cta: 'Voir les jeux',
+    },
+  ],
+  follow: {
+    eyebrow: 'Suivre le studio',
+    title: 'On montre aussi ce qu’on fait en vidéo.',
+    text: 'Coulisses, avancement et nouveautés : retrouve-nous sur nos chaînes.',
   },
   featured: {
     eyebrow: 'Travaux sélectionnés',
@@ -60,9 +95,10 @@ const fr = {
   },
   footer: {
     tagline:
-      'Un studio indépendant qui crée des produits numériques, des jeux, de la musique et des vidéos — fait avec soin, partagé librement.',
+      'Deux étudiants de prépa qui créent des projets sérieux, des simulations pour apprendre et des jeux — faits avec soin, partagés librement.',
     studio: 'Studio',
     elsewhere: 'Ailleurs',
+    contact: 'Contact',
     copyright: 'Nova Studio. Tous droits réservés.',
     builtWith: 'Construit avec Next.js, en public.',
   },
@@ -88,7 +124,7 @@ const fr = {
     removed: 'Retiré',
     knownIssues: 'Problèmes connus',
 	windowsHint: "Lance le fichier téléchargé et suis l'installateur.",
-	macosHint: "Extrais le fichier .zip, puis glisse Socle.app dans ton dossier Applications. Au premier lancement, si macOS bloque l'ouverture : va dans Réglages Système → Confidentialité et sécurité, puis clique sur « Ouvrir quand même » à côté de la mention concernant Socle (nécessaire une seule fois, macOS avertit car l'app n'est pas encore signée par un compte développeur Apple).", 
+	macosHint: "Extrais le fichier .zip, puis glisse Socle.app dans ton dossier Applications. Au premier lancement : clic droit sur l'app → Ouvrir (nécessaire une seule fois, macOS avertit car l'app n'est pas encore signée par un compte développeur Apple).", 
 	installGuideLink: "Guide d'installation détaillé",
 	
   },
@@ -127,15 +163,71 @@ const fr = {
     eyebrow: 'Pourquoi ce studio existe',
     title: 'À propos de Nova Studio',
     paragraphs: [
-      "Nova Studio est né d'une frustration simple : la plupart des projets personnels restent inachevés, ou sortent sans le soin qu'ils mériteraient. Ce studio existe pour faire l'inverse — traiter les projets perso avec la même exigence qu'un vrai produit.",
+      "Nova Studio est né entre deux cours de prépa, d'une frustration simple : la plupart des projets personnels restent inachevés, ou sortent sans le soin qu'ils mériteraient. Nous sommes deux étudiants, et ce studio existe pour faire l'inverse — traiter nos projets perso avec la même exigence qu'un vrai produit.",
       "Il n'y a pas de feuille de route dictée par un business plan, pas d'investisseurs à satisfaire, pas de publicité. Cette liberté est le point de départ. Elle signifie que chaque décision — du rayon d'un bouton au choix du prochain projet à sortir — se prend pour une seule raison : parce que ça rend la chose meilleure.",
-      'Nova Studio crée des logiciels, des jeux, de la musique et des vidéos sous un même nom, car dans la pratique, tout part du même processus : remarquer quelque chose qui mérite d’être fait, y consacrer le temps nécessaire, et le partager simplement.',
+      'Le studio tient sur trois piliers : un socle de projets sérieux, une part pédagogique avec des simulations pour comprendre en manipulant, et une part de jeux pour le plaisir. Tout part du même processus : remarquer quelque chose qui mérite d’être fait, y consacrer le temps nécessaire, et le partager simplement.',
     ],
     values: [
       { title: "D'abord utile", text: "Chaque projet part d'un problème réel et précis à résoudre — pas d'une tendance à suivre." },
       { title: 'Élégant par défaut', text: "Le bon design n'est pas ajouté à la fin. Il guide les décisions dès la première." },
       { title: 'Accessible à tous', text: "Rien de ce que fait Nova Studio n'est payant. Qualité et prix ne sont pas le même axe." },
     ],
+  },
+  learnPage: {
+    eyebrow: 'Le côté pédagogique',
+    title: 'Apprendre',
+    description:
+      "Des simulations interactives pour comprendre en manipulant. Rien n'est encore en ligne : voici ce qu'on imagine ici.",
+    items: [
+      {
+        tag: 'Optique',
+        title: 'Réfraction et lentilles',
+        text: "Faire varier l'angle ou l'indice et voir le rayon se plier en direct.",
+      },
+      {
+        tag: 'Mécanique',
+        title: 'Oscillateurs et pendules',
+        text: "Jouer sur la masse, la raideur et l'amortissement pour voir comment le mouvement change.",
+      },
+      {
+        tag: 'Ondes',
+        title: 'Superposition et interférences',
+        text: "Additionner deux ondes et observer quand elles se renforcent ou s'annulent.",
+      },
+      {
+        tag: 'Maths',
+        title: 'Fonctions et dérivées',
+        text: 'Tracer une fonction et suivre sa tangente en déplaçant un point.',
+      },
+    ],
+  },
+  gamesPage: {
+    eyebrow: 'Le côté fun',
+    title: 'Jeux',
+    description:
+      "De petits jeux pour décompresser. Rien n'est encore jouable : voici ce qu'on imagine ici.",
+    items: [
+      {
+        tag: 'Arcade',
+        title: 'Un jeu de raquette',
+        text: 'Un grand classique, jouable en une minute.',
+      },
+      {
+        tag: 'Réflexion',
+        title: 'Un puzzle logique',
+        text: 'Des niveaux courts qui font chauffer le cerveau sans le fatiguer.',
+      },
+      {
+        tag: 'Réflexes',
+        title: 'Un défi de rapidité',
+        text: 'Battre son propre record, rien de plus.',
+      },
+    ],
+  },
+  ideaBox: {
+    title: 'Une idée de sujet ?',
+    text: 'Écris-nous ce que tu aimerais voir ici.',
+    button: 'Nous écrire',
   },
   notFound: {
     code: '404',
@@ -162,59 +254,7 @@ const fr = {
     logout: 'Se déconnecter',
     backHome: "Retour à l'accueil",
   },
-  installPage: {
-    title: "Guide d'installation",
-    subtitle: 'Socle — application de bureau',
-    intro:
-      "Socle n'est pas encore signée par un compte développeur Apple ou un certificat Windows (ça coûte cher pour un petit studio) — du coup ton système affiche un avertissement au premier lancement. C'est normal, pas un signe que l'app est dangereuse. Voici comment passer cette étape, sur chaque système.",
-    currentVersion: 'Version actuelle',
-    noRelease: "Aucune version publiée pour l'instant.",
-    macosTitle: 'macOS',
-    macosSteps: [
-      {
-        title: 'Télécharge le fichier',
-        body: "Clique sur « Télécharger pour macOS » ci-dessus. Le fichier .zip arrive dans ton dossier Téléchargements.",
-      },
-      {
-        title: 'Extrais l’application',
-        body: "Double-clique sur le .zip téléchargé (certains navigateurs l'extraient automatiquement). Tu obtiens Socle.app.",
-      },
-      {
-        title: 'Déplace-la dans Applications',
-        body: 'Glisse Socle.app dans ton dossier Applications, comme pour n’importe quelle app macOS.',
-      },
-      {
-        title: 'Premier lancement : autorise l’ouverture',
-        body: "Si macOS bloque l'ouverture, va dans Réglages Système → Confidentialité et sécurité, puis clique sur « Ouvrir quand même » à côté de la mention concernant Socle. Cette étape n'est nécessaire qu'une seule fois.",
-      },
-    ],
-    macosTroubleTitle: '« Socle.app est endommagée et ne peut pas être ouverte »',
-    macosTroubleBody:
-      "Ce message (différent de l'avertissement normal) apparaît parfois sur les Mac Apple Silicon (M1/M2/M3) à cause de l'attribut de quarantaine posé automatiquement par le navigateur. Corrige-le en ouvrant l'app Terminal (Applications → Utilitaires → Terminal) et en collant la ligne suivante, puis Entrée :",
-    macosTroubleCommand: 'xattr -cr /Applications/Socle.app',
-    macosTroubleFooter: 'Relance ensuite Socle.app normalement (clic droit → Ouvrir).',
-    windowsTitle: 'Windows',
-    windowsSteps: [
-      {
-        title: 'Télécharge le fichier',
-        body: 'Clique sur « Télécharger pour Windows » ci-dessus pour récupérer le .exe.',
-      },
-      {
-        title: 'Lance l’installateur',
-        body: "Double-clique sur le fichier téléchargé. Windows SmartScreen affiche souvent « Windows a protégé votre ordinateur » — c'est la même raison que sur macOS (pas de certificat de signature payant).",
-      },
-      {
-        title: 'Autorise l’exécution',
-        body: 'Clique sur « Informations complémentaires », puis sur « Exécuter quand même ».',
-      },
-      {
-        title: 'Suis l’installateur',
-        body: 'Laisse-toi guider jusqu’au bout — Socle se lance automatiquement à la fin.',
-      },
-    ],
-    stillStuck: 'Toujours bloqué ?',
-    stillStuckBody: 'Écris-nous, on répond vite.',
-  },
+  installPage: { title: "Guide d'installation", comingSoon: "Un guide détaillé (captures d'écran, étapes pas-à-pas) arrive bientôt. En attendant, suis les indications affichées sous chaque bouton de téléchargement.", },
 };
 
 export default fr;

@@ -21,10 +21,11 @@ export default function Navbar({ locale, dict }: { locale: Locale; dict: Diction
 
   const links = [
     { href: `/${locale}/projects`, label: dict.nav.projects },
+    { href: `/${locale}/learn`, label: dict.nav.learn },
+    { href: `/${locale}/games`, label: dict.nav.games },
     { href: `/${locale}/journal`, label: dict.nav.journal },
-    { href: `/${locale}/roadmap`, label: dict.nav.roadmap },
-    { href: `/${locale}/support`, label: dict.nav.support },
     { href: `/${locale}/about`, label: dict.nav.about },
+    { href: `/${locale}/support`, label: dict.nav.support },
   ];
 
   useEffect(() => {
@@ -67,7 +68,7 @@ export default function Navbar({ locale, dict }: { locale: Locale; dict: Diction
           Nova Studio
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-6 lg:flex xl:gap-8">
           {links.map((link) => {
             const active = pathname === link.href || pathname?.startsWith(link.href + '/');
             return (
@@ -90,7 +91,7 @@ export default function Navbar({ locale, dict }: { locale: Locale; dict: Diction
           })}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 lg:flex">
           {email === undefined ? null : email ? (
             <>
               <Link
@@ -121,7 +122,7 @@ export default function Navbar({ locale, dict }: { locale: Locale; dict: Diction
         <button
           aria-label="Toggle menu"
           onClick={() => setOpen((v) => !v)}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-line md:hidden"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-line lg:hidden"
         >
           <div className="flex flex-col gap-[3px]">
             <span
@@ -140,7 +141,7 @@ export default function Navbar({ locale, dict }: { locale: Locale; dict: Diction
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="border-t border-line bg-paper md:hidden"
+          className="border-t border-line bg-paper lg:hidden"
         >
           <Container className="flex flex-col gap-1 py-4">
             {links.map((link) => (
