@@ -2,6 +2,7 @@ import Container from '@/components/ui/Container';
 import SectionHeading from '@/components/ui/SectionHeading';
 import ProjectCard from '@/components/projects/ProjectCard';
 import Button from '@/components/ui/Button';
+import TiltCard from '@/components/fx/TiltCard';
 import Reveal from '@/components/motion/Reveal';
 import { Project } from '@/lib/types';
 import { Locale } from '@/lib/i18n/config';
@@ -32,7 +33,9 @@ export default function FeaturedProjects({
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {projects.map((project, i) => (
-            <ProjectCard key={project.slug} project={project} locale={locale} dict={dict} index={i} />
+            <TiltCard key={project.slug} className="h-full">
+              <ProjectCard project={project} locale={locale} dict={dict} index={i} />
+            </TiltCard>
           ))}
         </div>
       </Container>

@@ -15,7 +15,7 @@ function ProjectsArt() {
   ];
 
   return (
-    <svg viewBox="0 0 400 300" className="h-full w-full" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 400 300" className="h-full w-full text-[rgb(var(--c-projects))]" fill="none" aria-hidden="true">
       {windows.map((win) => (
         <motion.g
           key={win.x}
@@ -33,7 +33,7 @@ function ProjectsArt() {
             width={win.w * 0.46}
             height="8"
             rx="4"
-            className={win.accent ? 'fill-accent' : 'fill-muted'}
+            className={win.accent ? 'fill-current' : 'fill-muted'}
             opacity={win.accent ? 1 : 0.45}
           />
           <rect x={win.x + 18} y={win.y + 58} width={win.w * 0.78} height="6" rx="3" className="fill-line" />
@@ -69,13 +69,13 @@ function LearnArt() {
   const ry = useTransform(theta, (t) => cy + Math.cos(refracted(t)) * len);
 
   return (
-    <svg viewBox="0 0 400 300" className="h-full w-full" fill="none" aria-hidden="true">
-      <rect x="0" y={cy} width="400" height={300 - cy} className="fill-accent" opacity="0.1" />
+    <svg viewBox="0 0 400 300" className="h-full w-full text-[rgb(var(--c-learn))]" fill="none" aria-hidden="true">
+      <rect x="0" y={cy} width="400" height={300 - cy} className="fill-current" opacity="0.14" />
       <line x1="0" y1={cy} x2="400" y2={cy} className="stroke-ink" strokeOpacity="0.35" strokeWidth="1.5" />
       <line x1={cx} y1="28" x2={cx} y2="272" className="stroke-muted" strokeWidth="1.2" strokeDasharray="5 5" />
-      <motion.line x1={ix} y1={iy} x2={cx} y2={cy} className="stroke-accent" strokeWidth="3.5" strokeLinecap="round" />
-      <motion.line x1={cx} y1={cy} x2={rx} y2={ry} className="stroke-accent" strokeWidth="3.5" strokeLinecap="round" />
-      <circle cx={cx} cy={cy} r="5" className="fill-paper stroke-accent" strokeWidth="2.5" />
+      <motion.line x1={ix} y1={iy} x2={cx} y2={cy} className="stroke-ink" strokeWidth="3.5" strokeLinecap="round" />
+      <motion.line x1={cx} y1={cy} x2={rx} y2={ry} className="stroke-current" strokeWidth="3.5" strokeLinecap="round" />
+      <circle cx={cx} cy={cy} r="5" className="fill-paper stroke-current" strokeWidth="2.5" />
       <text x="22" y="40" className="fill-muted font-mono" fontSize="14">
         n₁
       </text>
@@ -93,7 +93,7 @@ function GamesArt() {
   const paddleY = [40, 200, 40, 200, 40];
 
   return (
-    <svg viewBox="0 0 400 300" className="h-full w-full" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 400 300" className="h-full w-full text-[rgb(var(--c-games))]" fill="none" aria-hidden="true">
       <rect x="14" y="14" width="372" height="272" rx="14" className="stroke-line" strokeWidth="1.5" />
       <line x1="200" y1="26" x2="200" y2="274" className="stroke-line" strokeWidth="2" strokeDasharray="6 8" />
 
@@ -105,7 +105,7 @@ function GamesArt() {
       </motion.g>
 
       <motion.g animate={{ x: [0, 280, 0], y: [0, 160, 0, 160, 0] }} transition={loop}>
-        <circle cx="60" cy="70" r="8" className="fill-accent" />
+        <circle cx="60" cy="70" r="8" className="fill-current" />
       </motion.g>
     </svg>
   );

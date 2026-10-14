@@ -24,6 +24,8 @@ export default function LearnPage({ params }: { params: { locale: string } }) {
       title={dict.learnPage.title}
       description={dict.learnPage.description}
       items={dict.learnPage.items}
+      kind="learn"
+      empty={dict.learnPage.empty}
     />
   );
 }

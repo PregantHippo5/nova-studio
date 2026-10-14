@@ -1,0 +1,906 @@
+diff --git a/app/[locale]/layout.tsx b/app/[locale]/layout.tsx
+index ebaf8e9..05b15d7 100644
+--- a/app/[locale]/layout.tsx
++++ b/app/[locale]/layout.tsx
+@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
+ import Navbar from '@/components/layout/Navbar';
+ import Footer from '@/components/layout/Footer';
+ import SetHtmlLang from '@/components/layout/SetHtmlLang';
++import ScrollProgress from '@/components/motion/ScrollProgress';
+ import { locales, isLocale, defaultLocale, Locale } from '@/lib/i18n/config';
+ import { getDictionary } from '@/lib/i18n/dictionaries';
+ 
+@@ -40,6 +41,7 @@ export default function LocaleLayout({
+   return (
+     <>
+       <SetHtmlLang locale={locale} />
++      <ScrollProgress />
+       <Navbar locale={locale} dict={dict} />
+       <main className="flex-1">{children}</main>
+       <Footer locale={locale} dict={dict} />
+diff --git a/app/[locale]/page.tsx b/app/[locale]/page.tsx
+index f1b6e42..639ac39 100644
+--- a/app/[locale]/page.tsx
++++ b/app/[locale]/page.tsx
+@@ -1,7 +1,11 @@
+ import Link from 'next/link';
+ import Container from '@/components/ui/Container';
+ import Hero from '@/components/home/Hero';
++import Manifesto from '@/components/home/Manifesto';
++import StickyShowcase from '@/components/home/StickyShowcase';
+ import FeaturedProjects from '@/components/home/FeaturedProjects';
++import FollowStrip from '@/components/home/FollowStrip';
++import Reveal from '@/components/motion/Reveal';
+ import Button from '@/components/ui/Button';
+ import { getProjects, getJournalEntries } from '@/lib/supabase/queries';
+ import { isLocale, defaultLocale, Locale } from '@/lib/i18n/config';
+@@ -18,51 +22,59 @@ export default async function Home({ params }: { params: { locale: string } }) {
+   return (
+     <>
+       <Hero locale={locale} dict={dict} />
++      <Manifesto dict={dict} />
++      <StickyShowcase pillars={dict.pillars} locale={locale} />
+       <FeaturedProjects locale={locale} dict={dict} projects={projects} />
+ 
+       <section className="border-t border-line py-24">
+         <Container>
+           <div className="grid gap-12 md:grid-cols-3">
+-            {dict.principles.map((p) => (
+-              <div key={p.title}>
++            {dict.principles.map((p, i) => (
++              <Reveal key={p.title} delay={i * 0.1}>
+                 <h3 className="text-[1.05rem] font-semibold text-ink">{p.title}</h3>
+                 <p className="mt-3 text-sm leading-relaxed text-muted">{p.text}</p>
+-              </div>
++              </Reveal>
+             ))}
+           </div>
+         </Container>
+       </section>
+ 
++      <FollowStrip dict={dict} />
++
+       {latest && (
+         <section className="border-t border-line py-24">
+-          <Container className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+-            <div>
+-              <p className="mb-3 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-accent">
+-                {dict.journalTeaser.eyebrow}
+-              </p>
+-              <Link href={`/${locale}/journal/${latest.slug}`} className="group block max-w-xl">
+-                <h2 className="text-display-3 font-semibold text-ink transition-colors group-hover:text-accent">
+-                  {latest.title[locale]}
+-                </h2>
+-                <p className="mt-3 text-[0.95rem] leading-relaxed text-muted">{latest.excerpt[locale]}</p>
+-              </Link>
+-            </div>
+-            <Button href={`/${locale}/journal`} variant="ghost">
+-              {dict.journalTeaser.readMore}
+-            </Button>
++          <Container>
++            <Reveal className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
++              <div>
++                <p className="mb-3 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-accent">
++                  {dict.journalTeaser.eyebrow}
++                </p>
++                <Link href={`/${locale}/journal/${latest.slug}`} className="group block max-w-xl">
++                  <h2 className="text-display-3 font-semibold text-ink transition-colors group-hover:text-accent">
++                    {latest.title[locale]}
++                  </h2>
++                  <p className="mt-3 text-[0.95rem] leading-relaxed text-muted">{latest.excerpt[locale]}</p>
++                </Link>
++              </div>
++              <Button href={`/${locale}/journal`} variant="ghost">
++                {dict.journalTeaser.readMore}
++              </Button>
++            </Reveal>
+           </Container>
+         </section>
+       )}
+ 
+       <section className="border-t border-line py-24">
+-        <Container className="flex flex-col items-center gap-6 text-center">
+-          <h2 className="text-display-2 font-semibold text-ink balance max-w-2xl">
+-            {dict.ctaSupport.title}
+-          </h2>
+-          <p className="max-w-md text-[1.05rem] leading-relaxed text-muted">{dict.ctaSupport.text}</p>
+-          <Button href={`/${locale}/support`} variant="primary" className="mt-2">
+-            {dict.ctaSupport.button}
+-          </Button>
++        <Container>
++          <Reveal className="flex flex-col items-center gap-6 text-center">
++            <h2 className="text-display-2 font-semibold text-ink balance max-w-2xl">
++              {dict.ctaSupport.title}
++            </h2>
++            <p className="max-w-md text-[1.05rem] leading-relaxed text-muted">{dict.ctaSupport.text}</p>
++            <Button href={`/${locale}/support`} variant="primary" className="mt-2">
++              {dict.ctaSupport.button}
++            </Button>
++          </Reveal>
+         </Container>
+       </section>
+     </>
+diff --git a/app/globals.css b/app/globals.css
+index b535d56..d8e9844 100644
+--- a/app/globals.css
++++ b/app/globals.css
+@@ -79,3 +79,13 @@ body {
+ .balance {
+   text-wrap: balance;
+ }
++
++/* Quadrillage discret du hero, estompé vers les bords. */
++.hero-grid {
++  background-image:
++    linear-gradient(to right, rgb(var(--line)) 1px, transparent 1px),
++    linear-gradient(to bottom, rgb(var(--line)) 1px, transparent 1px);
++  background-size: 56px 56px;
++  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 25%, transparent 75%);
++  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 25%, transparent 75%);
++}
+diff --git a/components/home/FeaturedProjects.tsx b/components/home/FeaturedProjects.tsx
+index 2cec337..c8a85fd 100644
+--- a/components/home/FeaturedProjects.tsx
++++ b/components/home/FeaturedProjects.tsx
+@@ -2,6 +2,7 @@ import Container from '@/components/ui/Container';
+ import SectionHeading from '@/components/ui/SectionHeading';
+ import ProjectCard from '@/components/projects/ProjectCard';
+ import Button from '@/components/ui/Button';
++import Reveal from '@/components/motion/Reveal';
+ import { Project } from '@/lib/types';
+ import { Locale } from '@/lib/i18n/config';
+ import { Dictionary } from '@/lib/i18n/dictionaries';
+@@ -18,7 +19,7 @@ export default function FeaturedProjects({
+   return (
+     <section className="border-t border-line py-24">
+       <Container>
+-        <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
++        <Reveal className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+           <SectionHeading
+             eyebrow={dict.featured.eyebrow}
+             title={dict.featured.title}
+@@ -27,7 +28,7 @@ export default function FeaturedProjects({
+           <Button href={`/${locale}/projects`} variant="ghost">
+             {dict.featured.viewAll}
+           </Button>
+-        </div>
++        </Reveal>
+ 
+         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+           {projects.map((project, i) => (
+diff --git a/components/home/Hero.tsx b/components/home/Hero.tsx
+index e6bf49c..0fe45c0 100644
+--- a/components/home/Hero.tsx
++++ b/components/home/Hero.tsx
+@@ -1,6 +1,7 @@
+ 'use client';
+ 
+-import { motion } from 'framer-motion';
++import { useRef } from 'react';
++import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
+ import Container from '@/components/ui/Container';
+ import Button from '@/components/ui/Button';
+ import { Locale } from '@/lib/i18n/config';
+@@ -8,45 +9,85 @@ import { Dictionary } from '@/lib/i18n/dictionaries';
+ 
+ const container = {
+   hidden: {},
+-  show: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
++  show: { transition: { staggerChildren: 0.09, delayChildren: 0.1 } },
+ };
+ 
+ const item = {
+-  hidden: { opacity: 0, y: 18 },
+-  show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] } },
++  hidden: { opacity: 0, y: 20 },
++  show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } },
+ };
+ 
+ export default function Hero({ locale, dict }: { locale: Locale; dict: Dictionary }) {
++  const ref = useRef<HTMLElement>(null);
++  const reduce = useReducedMotion();
++  const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
++
++  // Chaque calque bouge à sa propre vitesse pendant le scroll : c'est ça qui crée la profondeur.
++  const blobA = useTransform(scrollYProgress, [0, 1], reduce ? [0, 0] : [0, 180]);
++  const blobB = useTransform(scrollYProgress, [0, 1], reduce ? [0, 0] : [0, -140]);
++  const grid = useTransform(scrollYProgress, [0, 1], reduce ? [0, 0] : [0, 70]);
++  const text = useTransform(scrollYProgress, [0, 1], reduce ? [0, 0] : [0, 90]);
++  const textOpacity = useTransform(scrollYProgress, [0, 0.75], reduce ? [1, 1] : [1, 0]);
++
+   return (
+-    <section className="relative overflow-hidden pb-20 pt-24 md:pb-28 md:pt-36">
+-      <Container>
+-        <motion.div variants={container} initial="hidden" animate="show" className="max-w-3xl">
+-          <motion.p
+-            variants={item}
+-            className="mb-6 inline-flex items-center gap-2 rounded-full border border-line px-3 py-1 font-mono text-[0.7rem] uppercase tracking-[0.1em] text-muted"
+-          >
+-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+-            {dict.hero.badge}
+-          </motion.p>
+-
+-          <motion.h1 variants={item} className="text-display-1 font-semibold text-ink balance">
+-            {dict.hero.title}
+-          </motion.h1>
+-
+-          <motion.p variants={item} className="mt-6 max-w-xl text-[1.1rem] leading-relaxed text-muted">
+-            {dict.hero.lead}
+-          </motion.p>
+-
+-          <motion.div variants={item} className="mt-10 flex flex-wrap items-center gap-4">
+-            <Button href={`/${locale}/projects`} variant="primary">
+-              {dict.hero.explore}
+-            </Button>
+-            <Button href={`/${locale}/support`} variant="secondary">
+-              {dict.hero.support}
+-            </Button>
++    <section ref={ref} className="relative flex min-h-[88vh] items-center overflow-hidden py-24">
++      <motion.div aria-hidden="true" style={{ y: grid }} className="hero-grid pointer-events-none absolute inset-0" />
++      <motion.div
++        aria-hidden="true"
++        style={{ y: blobA, background: 'rgb(var(--accent) / 0.2)' }}
++        className="pointer-events-none absolute -right-24 top-4 h-[26rem] w-[26rem] rounded-full blur-3xl"
++      />
++      <motion.div
++        aria-hidden="true"
++        style={{ y: blobB, background: 'rgb(var(--accent) / 0.12)' }}
++        className="pointer-events-none absolute -left-32 bottom-0 h-[22rem] w-[22rem] rounded-full blur-3xl"
++      />
++
++      <Container className="relative">
++        <motion.div style={{ y: text, opacity: textOpacity }}>
++          <motion.div variants={container} initial="hidden" animate="show" className="max-w-3xl">
++            <motion.p
++              variants={item}
++              className="mb-6 inline-flex items-center gap-2 rounded-full border border-line bg-paper/60 px-3 py-1 font-mono text-[0.7rem] uppercase tracking-[0.1em] text-muted backdrop-blur"
++            >
++              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
++              {dict.hero.badge}
++            </motion.p>
++
++            <motion.h1 variants={item} className="text-display-1 font-semibold text-ink balance">
++              {dict.hero.title}
++            </motion.h1>
++
++            <motion.p variants={item} className="mt-6 max-w-xl text-[1.1rem] leading-relaxed text-muted">
++              {dict.hero.lead}
++            </motion.p>
++
++            <motion.div variants={item} className="mt-10 flex flex-wrap items-center gap-4">
++              <Button href={`/${locale}/projects`} variant="primary">
++                {dict.hero.explore}
++              </Button>
++              <Button href={`/${locale}/learn`} variant="secondary">
++                {dict.hero.learn}
++              </Button>
++            </motion.div>
+           </motion.div>
+         </motion.div>
+       </Container>
++
++      <motion.div
++        aria-hidden="true"
++        initial={{ opacity: 0 }}
++        animate={{ opacity: 1 }}
++        transition={{ delay: 1.2, duration: 0.8 }}
++        className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 font-mono text-[0.65rem] uppercase tracking-[0.14em] text-muted md:flex"
++      >
++        {dict.hero.scroll}
++        <motion.span
++          animate={reduce ? undefined : { y: [0, 6, 0] }}
++          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
++          className="block h-6 w-px bg-muted"
++        />
++      </motion.div>
+     </section>
+   );
+ }
+diff --git a/components/layout/Footer.tsx b/components/layout/Footer.tsx
+index 0563b4d..a41e68e 100644
+--- a/components/layout/Footer.tsx
++++ b/components/layout/Footer.tsx
+@@ -2,6 +2,7 @@ import Link from 'next/link';
+ import Container from '@/components/ui/Container';
+ import { Locale } from '@/lib/i18n/config';
+ import { Dictionary } from '@/lib/i18n/dictionaries';
++import { CONTACT_EMAIL, SOCIALS } from '@/lib/site';
+ 
+ export default function Footer({ locale, dict }: { locale: Locale; dict: Dictionary }) {
+   const columns = [
+@@ -9,18 +10,17 @@ export default function Footer({ locale, dict }: { locale: Locale; dict: Diction
+       title: dict.footer.studio,
+       links: [
+         { label: dict.nav.projects, href: `/${locale}/projects` },
++        { label: dict.nav.learn, href: `/${locale}/learn` },
++        { label: dict.nav.games, href: `/${locale}/games` },
+         { label: dict.nav.journal, href: `/${locale}/journal` },
+-        { label: dict.nav.roadmap, href: `/${locale}/roadmap` },
+         { label: dict.nav.about, href: `/${locale}/about` },
+       ],
+     },
+     {
+       title: dict.footer.elsewhere,
+       links: [
+-        { label: 'YouTube', href: 'https://www.youtube.com/@Nova.Studio_dev' },
+-        { label: 'Instagram', href: 'https://www.instagram.com/nova.studio_dev/' },
+-        { label: 'TikTok', href: 'https://www.tiktok.com/@nova.studio_dev?lang=fr' },
+-        { label: 'Contact', href: 'mailto:studionova071@gmail.com' },
++        ...SOCIALS.map((social) => ({ label: social.name, href: social.href })),
++        { label: dict.footer.contact, href: `mailto:${CONTACT_EMAIL}` },
+       ],
+     },
+   ];
+@@ -44,16 +44,27 @@ export default function Footer({ locale, dict }: { locale: Locale; dict: Diction
+               {col.title}
+             </p>
+             <ul className="mt-4 flex flex-col gap-3">
+-              {col.links.map((link) => (
+-                <li key={link.label}>
+-                  <Link
+-                    href={link.href}
+-                    className="text-sm text-ink/80 transition-colors hover:text-ink"
+-                  >
+-                    {link.label}
+-                  </Link>
+-                </li>
+-              ))}
++              {col.links.map((link) => {
++                const external = link.href.startsWith('http');
++                const className = 'text-sm text-ink/80 transition-colors hover:text-ink';
++                return (
++                  <li key={link.label}>
++                    {external ? (
++                      <a href={link.href} target="_blank" rel="noopener noreferrer" className={className}>
++                        {link.label}
++                      </a>
++                    ) : link.href.startsWith('mailto:') ? (
++                      <a href={link.href} className={className}>
++                        {link.label}
++                      </a>
++                    ) : (
++                      <Link href={link.href} className={className}>
++                        {link.label}
++                      </Link>
++                    )}
++                  </li>
++                );
++              })}
+             </ul>
+           </div>
+         ))}
+@@ -65,4 +76,4 @@ export default function Footer({ locale, dict }: { locale: Locale; dict: Diction
+       </Container>
+     </footer>
+   );
+-}
+\ No newline at end of file
++}
+diff --git a/components/layout/Navbar.tsx b/components/layout/Navbar.tsx
+index d38dd58..a1da803 100644
+--- a/components/layout/Navbar.tsx
++++ b/components/layout/Navbar.tsx
+@@ -21,10 +21,11 @@ export default function Navbar({ locale, dict }: { locale: Locale; dict: Diction
+ 
+   const links = [
+     { href: `/${locale}/projects`, label: dict.nav.projects },
++    { href: `/${locale}/learn`, label: dict.nav.learn },
++    { href: `/${locale}/games`, label: dict.nav.games },
+     { href: `/${locale}/journal`, label: dict.nav.journal },
+-    { href: `/${locale}/roadmap`, label: dict.nav.roadmap },
+-    { href: `/${locale}/support`, label: dict.nav.support },
+     { href: `/${locale}/about`, label: dict.nav.about },
++    { href: `/${locale}/support`, label: dict.nav.support },
+   ];
+ 
+   useEffect(() => {
+@@ -67,7 +68,7 @@ export default function Navbar({ locale, dict }: { locale: Locale; dict: Diction
+           Nova Studio
+         </Link>
+ 
+-        <nav className="hidden items-center gap-8 md:flex">
++        <nav className="hidden items-center gap-6 lg:flex xl:gap-8">
+           {links.map((link) => {
+             const active = pathname === link.href || pathname?.startsWith(link.href + '/');
+             return (
+@@ -90,7 +91,7 @@ export default function Navbar({ locale, dict }: { locale: Locale; dict: Diction
+           })}
+         </nav>
+ 
+-        <div className="hidden items-center gap-3 md:flex">
++        <div className="hidden items-center gap-3 lg:flex">
+           {email === undefined ? null : email ? (
+             <>
+               <Link
+@@ -121,7 +122,7 @@ export default function Navbar({ locale, dict }: { locale: Locale; dict: Diction
+         <button
+           aria-label="Toggle menu"
+           onClick={() => setOpen((v) => !v)}
+-          className="flex h-9 w-9 items-center justify-center rounded-full border border-line md:hidden"
++          className="flex h-9 w-9 items-center justify-center rounded-full border border-line lg:hidden"
+         >
+           <div className="flex flex-col gap-[3px]">
+             <span
+@@ -140,7 +141,7 @@ export default function Navbar({ locale, dict }: { locale: Locale; dict: Diction
+           animate={{ height: 'auto', opacity: 1 }}
+           exit={{ height: 0, opacity: 0 }}
+           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+-          className="border-t border-line bg-paper md:hidden"
++          className="border-t border-line bg-paper lg:hidden"
+         >
+           <Container className="flex flex-col gap-1 py-4">
+             {links.map((link) => (
+diff --git a/components/projects/ProjectsGrid.tsx b/components/projects/ProjectsGrid.tsx
+index fc44859..a4e0f95 100644
+--- a/components/projects/ProjectsGrid.tsx
++++ b/components/projects/ProjectsGrid.tsx
+@@ -21,10 +21,14 @@ export default function ProjectsGrid({
+ 
+   const filtered = active === 'All' ? projects : projects.filter((p) => p.category === active);
+ 
++  // On n'affiche que les filtres qui contiennent vraiment des projets (plus de « Musique » vide).
++  const used = new Set(projects.map((p) => p.category));
++  const visibleCategories = categories.filter((cat) => cat === 'All' || used.has(cat));
++
+   return (
+     <div>
+       <div className="flex flex-wrap gap-2">
+-        {categories.map((cat) => (
++        {visibleCategories.map((cat) => (
+           <button
+             key={cat}
+             onClick={() => setActive(cat)}
+diff --git a/lib/i18n/dictionaries/en.ts b/lib/i18n/dictionaries/en.ts
+index c61604f..6b85287 100644
+--- a/lib/i18n/dictionaries/en.ts
++++ b/lib/i18n/dictionaries/en.ts
+@@ -5,12 +5,14 @@ const en: typeof fr = {
+     comingSoon: 'Coming soon',
+   },
+   meta: {
+-    title: 'Nova Studio — Independent digital studio',
++    title: 'Nova Studio — Projects, simulations and games',
+     description:
+-      'Nova Studio is an independent studio building digital products, games, music and video — free, made carefully.',
++      'Nova Studio is two students in French preparatory classes building serious projects, interactive simulations to learn from, and games — free, made carefully.',
+   },
+   nav: {
+     projects: 'Projects',
++    learn: 'Learn',
++    games: 'Games',
+     journal: 'Journal',
+     roadmap: 'Roadmap',
+     support: 'Support',
+@@ -23,11 +25,44 @@ const en: typeof fr = {
+     Archived: 'Archived',
+   },
+   hero: {
+-    badge: 'Independent studio',
+-    title: 'We build digital products, creative experiences and tools.',
+-    lead: 'Nova Studio is a small, independent studio. We design software, games, music and video with the same care — released free, maintained openly, and built to last longer than a trend.',
++    badge: 'Made by two prépa students',
++    title: 'Serious projects, simulations to understand, games to unwind.',
++    lead: 'Nova Studio is two students in French preparatory classes (prépa) building real software, interactive simulations and a few games outside of class. Everything is free, and everything is built in the open.',
+     explore: 'Explore projects',
+-    support: 'Support Nova Studio',
++    learn: 'See the simulations',
++    scroll: 'Scroll',
++  },
++  manifesto: {
++    eyebrow: 'The idea',
++    text: 'A base of serious projects, an educational side to understand by playing with things, and a side of games for fun. All of it built between prépa classes, free and in public.',
++  },
++  pillars: [
++    {
++      key: 'projects',
++      eyebrow: 'The foundation',
++      title: 'Serious projects',
++      text: 'Software designed like real products: tracked, versioned, documented. It is the backbone of the studio, starting with SOCLE.',
++      cta: 'See the projects',
++    },
++    {
++      key: 'learn',
++      eyebrow: 'The educational side',
++      title: 'Understand by doing',
++      text: 'Interactive simulations to watch a concept move instead of just reading about it: change a parameter, see what happens.',
++      cta: 'Explore Learn',
++    },
++    {
++      key: 'games',
++      eyebrow: 'The fun side',
++      title: 'Games to unwind',
++      text: 'Small, no-fuss games made for a break between study sessions. No ads, no in-app purchases.',
++      cta: 'See the games',
++    },
++  ],
++  follow: {
++    eyebrow: 'Follow the studio',
++    title: 'We also show our work on video.',
++    text: 'Behind the scenes, progress and news: find us on our channels.',
+   },
+   featured: {
+     eyebrow: 'Selected work',
+@@ -62,9 +97,10 @@ const en: typeof fr = {
+   },
+   footer: {
+     tagline:
+-      'An independent studio building digital products, games, music and video — made carefully, shared freely.',
++      'Two prépa students building serious projects, simulations to learn from, and games — made carefully, shared freely.',
+     studio: 'Studio',
+     elsewhere: 'Elsewhere',
++    contact: 'Contact',
+     copyright: 'Nova Studio. All rights reserved.',
+     builtWith: 'Built with Next.js, in the open.',
+   },
+@@ -90,7 +126,7 @@ const en: typeof fr = {
+     removed: 'Removed',
+     knownIssues: 'Known issues',
+ 	windowsHint: 'Run the downloaded file and follow the installer.',
+-	macosHint: "Unzip the file, then drag Socle.app into your Applications folder. On first launch, if macOS blocks it: go to System Settings → Privacy & Security, then click \"Open Anyway\" next to the mention about Socle (only needed once, macOS warns because the app isn't signed with an Apple developer account yet).",
++	macosHint: "Unzip the file, then drag Socle.app into your Applications folder. On first launch: right-click the app → Open (only needed once, macOS warns because the app isn't signed with an Apple developer account yet).",
+ 	installGuideLink: 'Detailed install guide',
+   },
+   journalPage: {
+@@ -127,9 +163,9 @@ const en: typeof fr = {
+     eyebrow: 'Why this exists',
+     title: 'About Nova Studio',
+     paragraphs: [
+-      'Nova Studio started as a simple frustration: most personal projects either stay unfinished or ship without the care they deserve. This studio exists to do the opposite — to treat side projects with the same discipline as a real product.',
++      'Nova Studio started between prépa classes, from a simple frustration: most personal projects either stay unfinished or ship without the care they deserve. We are two students, and this studio exists to do the opposite — to treat our side projects with the same discipline as a real product.',
+       "There is no roadmap dictated by a business plan, no investors to answer to, and no ads to run. That freedom is the point. It means every decision — from a button's border radius to which project ships next — gets made for the same reason: because it makes the thing better.",
+-      'Nova Studio builds software, games, music and video under one name because, in practice, they come from the same process: notice something worth making, spend the time it deserves, and share it plainly.',
++      'The studio rests on three pillars: a base of serious projects, an educational side with simulations to understand by doing, and a side of games for fun. It all comes from the same process: notice something worth making, spend the time it deserves, and share it plainly.',
+     ],
+     values: [
+       { title: 'Useful first', text: 'Every project starts from a real, specific problem worth solving — not a trend worth chasing.' },
+@@ -137,6 +173,62 @@ const en: typeof fr = {
+       { title: 'Accessible to everyone', text: 'Nothing Nova Studio makes sits behind a paywall. Quality and price are not the same axis.' },
+     ],
+   },
++  learnPage: {
++    eyebrow: 'The educational side',
++    title: 'Learn',
++    description:
++      "Interactive simulations to understand by doing. Nothing is online yet: here is what we have in mind.",
++    items: [
++      {
++        tag: 'Optics',
++        title: 'Refraction and lenses',
++        text: 'Change the angle or the index and watch the ray bend in real time.',
++      },
++      {
++        tag: 'Mechanics',
++        title: 'Oscillators and pendulums',
++        text: 'Play with mass, stiffness and damping to see how the motion changes.',
++      },
++      {
++        tag: 'Waves',
++        title: 'Superposition and interference',
++        text: 'Add two waves together and see when they reinforce or cancel each other.',
++      },
++      {
++        tag: 'Maths',
++        title: 'Functions and derivatives',
++        text: 'Plot a function and follow its tangent by moving a point.',
++      },
++    ],
++  },
++  gamesPage: {
++    eyebrow: 'The fun side',
++    title: 'Games',
++    description:
++      'Small games to unwind. Nothing is playable yet: here is what we have in mind.',
++    items: [
++      {
++        tag: 'Arcade',
++        title: 'A paddle game',
++        text: 'A true classic, playable in a minute.',
++      },
++      {
++        tag: 'Puzzle',
++        title: 'A logic puzzle',
++        text: 'Short levels that warm up the brain without wearing it out.',
++      },
++      {
++        tag: 'Reflexes',
++        title: 'A speed challenge',
++        text: 'Beat your own record, nothing more.',
++      },
++    ],
++  },
++  ideaBox: {
++    title: 'Got a topic in mind?',
++    text: 'Write to us and tell us what you would like to see here.',
++    button: 'Write to us',
++  },
+   notFound: {
+     code: '404',
+     title: "This page doesn't exist.",
+@@ -162,59 +254,7 @@ const en: typeof fr = {
+     logout: 'Log out',
+     backHome: 'Back to home',
+   },
+-  installPage: {
+-    title: 'Install guide',
+-    subtitle: 'Socle — desktop app',
+-    intro:
+-      "Socle isn't signed with an Apple developer account or a Windows certificate yet (those cost money for a small studio) — so your system shows a warning on first launch. That's expected, not a sign the app is unsafe. Here's how to get past it, on each platform.",
+-    currentVersion: 'Current version',
+-    noRelease: 'No release published yet.',
+-    macosTitle: 'macOS',
+-    macosSteps: [
+-      {
+-        title: 'Download the file',
+-        body: 'Click "Download for macOS" above. The .zip lands in your Downloads folder.',
+-      },
+-      {
+-        title: 'Extract the app',
+-        body: 'Double-click the downloaded .zip (some browsers extract it automatically). You get Socle.app.',
+-      },
+-      {
+-        title: 'Move it to Applications',
+-        body: 'Drag Socle.app into your Applications folder, like any other macOS app.',
+-      },
+-      {
+-        title: 'First launch: allow it to open',
+-        body: 'If macOS blocks it, go to System Settings → Privacy & Security, then click "Open Anyway" next to the mention about Socle. This is only needed once.',
+-      },
+-    ],
+-    macosTroubleTitle: '"Socle.app is damaged and can\'t be opened"',
+-    macosTroubleBody:
+-      "This message (different from the normal warning) sometimes shows up on Apple Silicon Macs (M1/M2/M3) because of a quarantine flag the browser adds automatically. Fix it by opening the Terminal app (Applications → Utilities → Terminal), pasting the line below, then pressing Enter:",
+-    macosTroubleCommand: 'xattr -cr /Applications/Socle.app',
+-    macosTroubleFooter: 'Then launch Socle.app normally (right-click → Open).',
+-    windowsTitle: 'Windows',
+-    windowsSteps: [
+-      {
+-        title: 'Download the file',
+-        body: 'Click "Download for Windows" above to get the .exe.',
+-      },
+-      {
+-        title: 'Run the installer',
+-        body: 'Double-click the downloaded file. Windows SmartScreen often shows "Windows protected your PC" — same reason as on macOS (no paid signing certificate).',
+-      },
+-      {
+-        title: 'Allow it to run',
+-        body: 'Click "More info", then "Run anyway".',
+-      },
+-      {
+-        title: 'Follow the installer',
+-        body: 'Follow the steps to the end — Socle launches automatically once it\'s done.',
+-      },
+-    ],
+-    stillStuck: 'Still stuck?',
+-    stillStuckBody: 'Reach out — we reply fast.',
+-  },
++  installPage: { title: 'Install guide', comingSoon: "A detailed guide (screenshots, step-by-step) is coming soon. In the meantime, follow the hints shown under each download button.", },
+ };
+ 
+ export default en;
+diff --git a/lib/i18n/dictionaries/fr.ts b/lib/i18n/dictionaries/fr.ts
+index d6422a1..a9fa9d7 100644
+--- a/lib/i18n/dictionaries/fr.ts
++++ b/lib/i18n/dictionaries/fr.ts
+@@ -3,12 +3,14 @@ const fr = {
+     comingSoon: 'Bientôt disponible',
+   },
+   meta: {
+-    title: 'Nova Studio — Studio numérique indépendant',
++    title: 'Nova Studio — Projets, simulations et jeux',
+     description:
+-      'Nova Studio est un studio indépendant qui conçoit des produits numériques, des jeux, de la musique et des vidéos — gratuits, faits avec soin.',
++      'Nova Studio, ce sont deux étudiants de prépa qui construisent des projets sérieux, des simulations interactives pour apprendre et des jeux — gratuits, faits avec soin.',
+   },
+   nav: {
+     projects: 'Projets',
++    learn: 'Apprendre',
++    games: 'Jeux',
+     journal: 'Journal',
+     roadmap: 'Roadmap',
+     support: 'Soutenir',
+@@ -21,11 +23,44 @@ const fr = {
+     Archived: 'Archivé',
+   },
+   hero: {
+-    badge: 'Studio indépendant',
+-    title: 'Nous créons des produits numériques, des expériences et des outils.',
+-    lead: "Nova Studio est un petit studio indépendant. Nous concevons logiciels, jeux, musique et vidéos avec le même soin — publiés gratuitement, entretenus ouvertement, pensés pour durer plus longtemps qu'une tendance.",
++    badge: 'Fait par deux étudiants de prépa',
++    title: 'Des projets sérieux, des simulations pour comprendre, des jeux pour décompresser.',
++    lead: "Nova Studio, c'est deux étudiants de classe prépa qui construisent, en dehors des cours, de vrais logiciels, des simulations interactives et quelques jeux. Tout est gratuit, et tout avance au grand jour.",
+     explore: 'Découvrir les projets',
+-    support: 'Soutenir Nova Studio',
++    learn: 'Voir les simulations',
++    scroll: 'Défiler',
++  },
++  manifesto: {
++    eyebrow: 'Le principe',
++    text: "Un socle de projets sérieux, une part pédagogique pour comprendre en manipulant, et une part de jeux pour le plaisir. Le tout construit entre deux cours de prépa, gratuit et en public.",
++  },
++  pillars: [
++    {
++      key: 'projects',
++      eyebrow: 'Le socle',
++      title: 'Des projets sérieux',
++      text: "Des logiciels pensés comme de vrais produits : suivis, versionnés, documentés. C'est la colonne vertébrale du studio, à commencer par SOCLE.",
++      cta: 'Voir les projets',
++    },
++    {
++      key: 'learn',
++      eyebrow: 'Le côté pédagogique',
++      title: 'Comprendre en manipulant',
++      text: "Des simulations interactives pour voir un concept bouger plutôt que le lire : on change un paramètre, on observe ce qui se passe.",
++      cta: 'Explorer Apprendre',
++    },
++    {
++      key: 'games',
++      eyebrow: 'Le côté fun',
++      title: 'Des jeux pour décompresser',
++      text: "Des petits jeux sans prise de tête, faits pour souffler entre deux révisions. Pas de pub, pas d'achat intégré.",
++      cta: 'Voir les jeux',
++    },
++  ],
++  follow: {
++    eyebrow: 'Suivre le studio',
++    title: 'On montre aussi ce qu’on fait en vidéo.',
++    text: 'Coulisses, avancement et nouveautés : retrouve-nous sur nos chaînes.',
+   },
+   featured: {
+     eyebrow: 'Travaux sélectionnés',
+@@ -60,9 +95,10 @@ const fr = {
+   },
+   footer: {
+     tagline:
+-      'Un studio indépendant qui crée des produits numériques, des jeux, de la musique et des vidéos — fait avec soin, partagé librement.',
++      'Deux étudiants de prépa qui créent des projets sérieux, des simulations pour apprendre et des jeux — faits avec soin, partagés librement.',
+     studio: 'Studio',
+     elsewhere: 'Ailleurs',
++    contact: 'Contact',
+     copyright: 'Nova Studio. Tous droits réservés.',
+     builtWith: 'Construit avec Next.js, en public.',
+   },
+@@ -88,7 +124,7 @@ const fr = {
+     removed: 'Retiré',
+     knownIssues: 'Problèmes connus',
+ 	windowsHint: "Lance le fichier téléchargé et suis l'installateur.",
+-	macosHint: "Extrais le fichier .zip, puis glisse Socle.app dans ton dossier Applications. Au premier lancement, si macOS bloque l'ouverture : va dans Réglages Système → Confidentialité et sécurité, puis clique sur « Ouvrir quand même » à côté de la mention concernant Socle (nécessaire une seule fois, macOS avertit car l'app n'est pas encore signée par un compte développeur Apple).", 
++	macosHint: "Extrais le fichier .zip, puis glisse Socle.app dans ton dossier Applications. Au premier lancement : clic droit sur l'app → Ouvrir (nécessaire une seule fois, macOS avertit car l'app n'est pas encore signée par un compte développeur Apple).", 
+ 	installGuideLink: "Guide d'installation détaillé",
+ 	
+   },
+@@ -127,9 +163,9 @@ const fr = {
+     eyebrow: 'Pourquoi ce studio existe',
+     title: 'À propos de Nova Studio',
+     paragraphs: [
+-      "Nova Studio est né d'une frustration simple : la plupart des projets personnels restent inachevés, ou sortent sans le soin qu'ils mériteraient. Ce studio existe pour faire l'inverse — traiter les projets perso avec la même exigence qu'un vrai produit.",
++      "Nova Studio est né entre deux cours de prépa, d'une frustration simple : la plupart des projets personnels restent inachevés, ou sortent sans le soin qu'ils mériteraient. Nous sommes deux étudiants, et ce studio existe pour faire l'inverse — traiter nos projets perso avec la même exigence qu'un vrai produit.",
+       "Il n'y a pas de feuille de route dictée par un business plan, pas d'investisseurs à satisfaire, pas de publicité. Cette liberté est le point de départ. Elle signifie que chaque décision — du rayon d'un bouton au choix du prochain projet à sortir — se prend pour une seule raison : parce que ça rend la chose meilleure.",
+-      'Nova Studio crée des logiciels, des jeux, de la musique et des vidéos sous un même nom, car dans la pratique, tout part du même processus : remarquer quelque chose qui mérite d’être fait, y consacrer le temps nécessaire, et le partager simplement.',
++      'Le studio tient sur trois piliers : un socle de projets sérieux, une part pédagogique avec des simulations pour comprendre en manipulant, et une part de jeux pour le plaisir. Tout part du même processus : remarquer quelque chose qui mérite d’être fait, y consacrer le temps nécessaire, et le partager simplement.',
+     ],
+     values: [
+       { title: "D'abord utile", text: "Chaque projet part d'un problème réel et précis à résoudre — pas d'une tendance à suivre." },
+@@ -137,6 +173,62 @@ const fr = {
+       { title: 'Accessible à tous', text: "Rien de ce que fait Nova Studio n'est payant. Qualité et prix ne sont pas le même axe." },
+     ],
+   },
++  learnPage: {
++    eyebrow: 'Le côté pédagogique',
++    title: 'Apprendre',
++    description:
++      "Des simulations interactives pour comprendre en manipulant. Rien n'est encore en ligne : voici ce qu'on imagine ici.",
++    items: [
++      {
++        tag: 'Optique',
++        title: 'Réfraction et lentilles',
++        text: "Faire varier l'angle ou l'indice et voir le rayon se plier en direct.",
++      },
++      {
++        tag: 'Mécanique',
++        title: 'Oscillateurs et pendules',
++        text: "Jouer sur la masse, la raideur et l'amortissement pour voir comment le mouvement change.",
++      },
++      {
++        tag: 'Ondes',
++        title: 'Superposition et interférences',
++        text: "Additionner deux ondes et observer quand elles se renforcent ou s'annulent.",
++      },
++      {
++        tag: 'Maths',
++        title: 'Fonctions et dérivées',
++        text: 'Tracer une fonction et suivre sa tangente en déplaçant un point.',
++      },
++    ],
++  },
++  gamesPage: {
++    eyebrow: 'Le côté fun',
++    title: 'Jeux',
++    description:
++      "De petits jeux pour décompresser. Rien n'est encore jouable : voici ce qu'on imagine ici.",
++    items: [
++      {
++        tag: 'Arcade',
++        title: 'Un jeu de raquette',
++        text: 'Un grand classique, jouable en une minute.',
++      },
++      {
++        tag: 'Réflexion',
++        title: 'Un puzzle logique',
++        text: 'Des niveaux courts qui font chauffer le cerveau sans le fatiguer.',
++      },
++      {
++        tag: 'Réflexes',
++        title: 'Un défi de rapidité',
++        text: 'Battre son propre record, rien de plus.',
++      },
++    ],
++  },
++  ideaBox: {
++    title: 'Une idée de sujet ?',
++    text: 'Écris-nous ce que tu aimerais voir ici.',
++    button: 'Nous écrire',
++  },
+   notFound: {
+     code: '404',
+     title: "Cette page n'existe pas.",
+@@ -162,59 +254,7 @@ const fr = {
+     logout: 'Se déconnecter',
+     backHome: "Retour à l'accueil",
+   },
+-  installPage: {
+-    title: "Guide d'installation",
+-    subtitle: 'Socle — application de bureau',
+-    intro:
+-      "Socle n'est pas encore signée par un compte développeur Apple ou un certificat Windows (ça coûte cher pour un petit studio) — du coup ton système affiche un avertissement au premier lancement. C'est normal, pas un signe que l'app est dangereuse. Voici comment passer cette étape, sur chaque système.",
+-    currentVersion: 'Version actuelle',
+-    noRelease: "Aucune version publiée pour l'instant.",
+-    macosTitle: 'macOS',
+-    macosSteps: [
+-      {
+-        title: 'Télécharge le fichier',
+-        body: "Clique sur « Télécharger pour macOS » ci-dessus. Le fichier .zip arrive dans ton dossier Téléchargements.",
+-      },
+-      {
+-        title: 'Extrais l’application',
+-        body: "Double-clique sur le .zip téléchargé (certains navigateurs l'extraient automatiquement). Tu obtiens Socle.app.",
+-      },
+-      {
+-        title: 'Déplace-la dans Applications',
+-        body: 'Glisse Socle.app dans ton dossier Applications, comme pour n’importe quelle app macOS.',
+-      },
+-      {
+-        title: 'Premier lancement : autorise l’ouverture',
+-        body: "Si macOS bloque l'ouverture, va dans Réglages Système → Confidentialité et sécurité, puis clique sur « Ouvrir quand même » à côté de la mention concernant Socle. Cette étape n'est nécessaire qu'une seule fois.",
+-      },
+-    ],
+-    macosTroubleTitle: '« Socle.app est endommagée et ne peut pas être ouverte »',
+-    macosTroubleBody:
+-      "Ce message (différent de l'avertissement normal) apparaît parfois sur les Mac Apple Silicon (M1/M2/M3) à cause de l'attribut de quarantaine posé automatiquement par le navigateur. Corrige-le en ouvrant l'app Terminal (Applications → Utilitaires → Terminal) et en collant la ligne suivante, puis Entrée :",
+-    macosTroubleCommand: 'xattr -cr /Applications/Socle.app',
+-    macosTroubleFooter: 'Relance ensuite Socle.app normalement (clic droit → Ouvrir).',
+-    windowsTitle: 'Windows',
+-    windowsSteps: [
+-      {
+-        title: 'Télécharge le fichier',
+-        body: 'Clique sur « Télécharger pour Windows » ci-dessus pour récupérer le .exe.',
+-      },
+-      {
+-        title: 'Lance l’installateur',
+-        body: "Double-clique sur le fichier téléchargé. Windows SmartScreen affiche souvent « Windows a protégé votre ordinateur » — c'est la même raison que sur macOS (pas de certificat de signature payant).",
+-      },
+-      {
+-        title: 'Autorise l’exécution',
+-        body: 'Clique sur « Informations complémentaires », puis sur « Exécuter quand même ».',
+-      },
+-      {
+-        title: 'Suis l’installateur',
+-        body: 'Laisse-toi guider jusqu’au bout — Socle se lance automatiquement à la fin.',
+-      },
+-    ],
+-    stillStuck: 'Toujours bloqué ?',
+-    stillStuckBody: 'Écris-nous, on répond vite.',
+-  },
++  installPage: { title: "Guide d'installation", comingSoon: "Un guide détaillé (captures d'écran, étapes pas-à-pas) arrive bientôt. En attendant, suis les indications affichées sous chaque bouton de téléchargement.", },
+ };
+ 
+ export default fr;

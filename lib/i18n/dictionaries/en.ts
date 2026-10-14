@@ -32,6 +32,7 @@ const en: typeof fr = {
     learn: 'See the simulations',
     scroll: 'Scroll',
   },
+  marquee: ['Serious projects', 'Simulations', 'Games'],
   manifesto: {
     eyebrow: 'The idea',
     text: 'A base of serious projects, an educational side to understand by playing with things, and a side of games for fun. All of it built between prépa classes, free and in public.',
@@ -176,53 +177,22 @@ const en: typeof fr = {
   learnPage: {
     eyebrow: 'The educational side',
     title: 'Learn',
-    description:
-      "Interactive simulations to understand by doing. Nothing is online yet: here is what we have in mind.",
-    items: [
-      {
-        tag: 'Optics',
-        title: 'Refraction and lenses',
-        text: 'Change the angle or the index and watch the ray bend in real time.',
-      },
-      {
-        tag: 'Mechanics',
-        title: 'Oscillators and pendulums',
-        text: 'Play with mass, stiffness and damping to see how the motion changes.',
-      },
-      {
-        tag: 'Waves',
-        title: 'Superposition and interference',
-        text: 'Add two waves together and see when they reinforce or cancel each other.',
-      },
-      {
-        tag: 'Maths',
-        title: 'Functions and derivatives',
-        text: 'Plot a function and follow its tangent by moving a point.',
-      },
-    ],
+    description: "Interactive simulations to understand by doing.",
+    items: [] as { tag: string; title: string; text: string }[],
+    empty: {
+      title: 'The first simulations are coming.',
+      text: "Nothing is online here yet. Meanwhile, watch how a ray bends as it crosses two media.",
+    },
   },
   gamesPage: {
     eyebrow: 'The fun side',
     title: 'Games',
-    description:
-      'Small games to unwind. Nothing is playable yet: here is what we have in mind.',
-    items: [
-      {
-        tag: 'Arcade',
-        title: 'A paddle game',
-        text: 'A true classic, playable in a minute.',
-      },
-      {
-        tag: 'Puzzle',
-        title: 'A logic puzzle',
-        text: 'Short levels that warm up the brain without wearing it out.',
-      },
-      {
-        tag: 'Reflexes',
-        title: 'A speed challenge',
-        text: 'Beat your own record, nothing more.',
-      },
-    ],
+    description: "Small games to unwind.",
+    items: [] as { tag: string; title: string; text: string }[],
+    empty: {
+      title: 'The first game is coming.',
+      text: "Nothing is playable yet. Meanwhile, the ball keeps bouncing.",
+    },
   },
   ideaBox: {
     title: 'Got a topic in mind?',

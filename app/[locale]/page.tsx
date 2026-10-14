@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Container from '@/components/ui/Container';
 import Hero from '@/components/home/Hero';
+import Marquee from '@/components/home/Marquee';
 import Manifesto from '@/components/home/Manifesto';
 import StickyShowcase from '@/components/home/StickyShowcase';
 import FeaturedProjects from '@/components/home/FeaturedProjects';
@@ -22,6 +23,7 @@ export default async function Home({ params }: { params: { locale: string } }) {
   return (
     <>
       <Hero locale={locale} dict={dict} />
+      <Marquee words={dict.marquee} />
       <Manifesto dict={dict} />
       <StickyShowcase pillars={dict.pillars} locale={locale} />
       <FeaturedProjects locale={locale} dict={dict} projects={projects} />

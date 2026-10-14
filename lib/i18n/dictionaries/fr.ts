@@ -30,6 +30,7 @@ const fr = {
     learn: 'Voir les simulations',
     scroll: 'Défiler',
   },
+  marquee: ['Projets sérieux', 'Simulations', 'Jeux'],
   manifesto: {
     eyebrow: 'Le principe',
     text: "Un socle de projets sérieux, une part pédagogique pour comprendre en manipulant, et une part de jeux pour le plaisir. Le tout construit entre deux cours de prépa, gratuit et en public.",
@@ -176,53 +177,22 @@ const fr = {
   learnPage: {
     eyebrow: 'Le côté pédagogique',
     title: 'Apprendre',
-    description:
-      "Des simulations interactives pour comprendre en manipulant. Rien n'est encore en ligne : voici ce qu'on imagine ici.",
-    items: [
-      {
-        tag: 'Optique',
-        title: 'Réfraction et lentilles',
-        text: "Faire varier l'angle ou l'indice et voir le rayon se plier en direct.",
-      },
-      {
-        tag: 'Mécanique',
-        title: 'Oscillateurs et pendules',
-        text: "Jouer sur la masse, la raideur et l'amortissement pour voir comment le mouvement change.",
-      },
-      {
-        tag: 'Ondes',
-        title: 'Superposition et interférences',
-        text: "Additionner deux ondes et observer quand elles se renforcent ou s'annulent.",
-      },
-      {
-        tag: 'Maths',
-        title: 'Fonctions et dérivées',
-        text: 'Tracer une fonction et suivre sa tangente en déplaçant un point.',
-      },
-    ],
+    description: "Des simulations interactives pour comprendre en manipulant.",
+    items: [] as { tag: string; title: string; text: string }[],
+    empty: {
+      title: 'Les premières simulations arrivent.',
+      text: "Rien n'est encore en ligne ici. En attendant, regarde comment un rayon se plie en traversant deux milieux.",
+    },
   },
   gamesPage: {
     eyebrow: 'Le côté fun',
     title: 'Jeux',
-    description:
-      "De petits jeux pour décompresser. Rien n'est encore jouable : voici ce qu'on imagine ici.",
-    items: [
-      {
-        tag: 'Arcade',
-        title: 'Un jeu de raquette',
-        text: 'Un grand classique, jouable en une minute.',
-      },
-      {
-        tag: 'Réflexion',
-        title: 'Un puzzle logique',
-        text: 'Des niveaux courts qui font chauffer le cerveau sans le fatiguer.',
-      },
-      {
-        tag: 'Réflexes',
-        title: 'Un défi de rapidité',
-        text: 'Battre son propre record, rien de plus.',
-      },
-    ],
+    description: "De petits jeux pour décompresser.",
+    items: [] as { tag: string; title: string; text: string }[],
+    empty: {
+      title: 'Le premier jeu arrive.',
+      text: "Rien n'est encore jouable. En attendant, la balle continue de rebondir.",
+    },
   },
   ideaBox: {
     title: 'Une idée de sujet ?',

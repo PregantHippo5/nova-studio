@@ -5,6 +5,8 @@ import { AnimatePresence, motion, useMotionValueEvent, useScroll } from 'framer-
 import Container from '@/components/ui/Container';
 import Button from '@/components/ui/Button';
 import PillarArt from '@/components/home/PillarArt';
+import Magnetic from '@/components/fx/Magnetic';
+import TiltCard from '@/components/fx/TiltCard';
 import { Locale } from '@/lib/i18n/config';
 
 interface Pillar {
@@ -36,6 +38,7 @@ export default function StickyShowcase({ pillars, locale }: { pillars: Pillar[];
   });
 
   const current = pillars[active];
+  const colorVar = `var(--c-${current.key in paths ? current.key : 'projects'})`;
 
   return (
     <section
@@ -55,18 +58,21 @@ export default function StickyShowcase({ pillars, locale }: { pillars: Pillar[];
                 exit={{ opacity: 0, y: -24 }}
                 transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
               >
-                <p className="mb-3 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-accent">
+                <p
+                  className="mb-3 font-mono text-[0.75rem] tracking-[0.04em]"
+                  style={{ color: `rgb(${colorVar})` }}
+                >
                   {current.eyebrow}
                 </p>
-                <h2 className="text-display-2 font-semibold text-ink balance">{current.title}</h2>
+                <h2 className="font-display text-display-2 font-bold text-ink balance">{current.title}</h2>
                 <p className="mt-4 max-w-md text-[1.05rem] leading-relaxed text-muted">{current.text}</p>
-                <Button
-                  href={`/${locale}/${paths[current.key] ?? 'projects'}`}
-                  variant="secondary"
-                  className="mt-8"
-                >
-                  {current.cta}
-                </Button>
+                <div className="mt-8">
+                  <Magnetic>
+                    <Button href={`/${locale}/${paths[current.key] ?? 'projects'}`} variant="secondary">
+                      {current.cta}
+                    </Button>
+                  </Magnetic>
+                </div>
               </motion.div>
             </AnimatePresence>
 
@@ -74,8 +80,9 @@ export default function StickyShowcase({ pillars, locale }: { pillars: Pillar[];
               {pillars.map((pillar, i) => (
                 <span
                   key={pillar.key}
+                  style={i === active ? { backgroundColor: `rgb(${colorVar})` } : undefined}
                   className={`h-1 rounded-full transition-all duration-500 ease-smooth ${
-                    i === active ? 'w-10 bg-accent' : 'w-4 bg-line'
+                    i === active ? 'w-10' : 'w-4 bg-line'
                   }`}
                 />
               ))}
@@ -83,7 +90,12 @@ export default function StickyShowcase({ pillars, locale }: { pillars: Pillar[];
           </div>
 
           <div className="order-1 md:order-2" aria-hidden="true">
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-line bg-accent-soft">
+            <TiltCard className="rounded-3xl">
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-line bg-mist">
+              <div
+                className="pointer-events-none absolute inset-0 transition-opacity duration-500"
+                style={{ background: `radial-gradient(70% 70% at 50% 50%, rgb(${colorVar} / 0.28), transparent 70%)` }}
+              />
               <AnimatePresence mode="wait">
                 <motion.div
                   key={current.key}
@@ -97,6 +109,7 @@ export default function StickyShowcase({ pillars, locale }: { pillars: Pillar[];
                 </motion.div>
               </AnimatePresence>
             </div>
+            </TiltCard>
           </div>
         </Container>
       </div>

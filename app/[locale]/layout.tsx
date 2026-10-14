@@ -2,6 +2,11 @@ import type { Metadata } from 'next';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import SetHtmlLang from '@/components/layout/SetHtmlLang';
+import ThemeScript from '@/components/fx/ThemeScript';
+import ThemeSync from '@/components/fx/ThemeSync';
+import Preloader from '@/components/fx/Preloader';
+import CustomCursor from '@/components/fx/CustomCursor';
+import { display } from '@/lib/fonts';
 import ScrollProgress from '@/components/motion/ScrollProgress';
 import { locales, isLocale, defaultLocale, Locale } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/dictionaries';
@@ -40,11 +45,17 @@ export default function LocaleLayout({
 
   return (
     <>
+      <ThemeScript />
       <SetHtmlLang locale={locale} />
+      <ThemeSync />
       <ScrollProgress />
-      <Navbar locale={locale} dict={dict} />
-      <main className="flex-1">{children}</main>
-      <Footer locale={locale} dict={dict} />
+      <Preloader />
+      <CustomCursor />
+      <div className={`${display.variable} flex flex-1 flex-col`}>
+        <Navbar locale={locale} dict={dict} />
+        <main className="flex-1">{children}</main>
+        <Footer locale={locale} dict={dict} />
+      </div>
     </>
   );
 }

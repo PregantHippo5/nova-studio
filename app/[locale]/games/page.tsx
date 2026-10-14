@@ -24,6 +24,8 @@ export default function GamesPage({ params }: { params: { locale: string } }) {
       title={dict.gamesPage.title}
       description={dict.gamesPage.description}
       items={dict.gamesPage.items}
+      kind="games"
+      empty={dict.gamesPage.empty}
     />
   );
 }

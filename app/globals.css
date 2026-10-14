@@ -10,6 +10,11 @@
   --muted: 111 109 102;
   --accent: 70 64 222;
   --accent-soft: 238 237 252;
+
+  /* Les trois couleurs du rayon qui traverse le cristal : une par pilier du studio. */
+  --c-projects: 70 64 222;
+  --c-learn: 8 145 178;
+  --c-games: 219 39 119;
 }
 
 .dark {
@@ -20,6 +25,10 @@
   --muted: 148 146 140;
   --accent: 130 126 255;
   --accent-soft: 26 25 46;
+
+  --c-projects: 130 126 255;
+  --c-learn: 56 215 245;
+  --c-games: 255 110 180;
 }
 
 * {
@@ -88,4 +97,54 @@ body {
   background-size: 56px 56px;
   -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 25%, transparent 75%);
   mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 25%, transparent 75%);
+}
+
+/* ------------------------------------------------------------------ */
+/* Effets (refonte « waouh »)                                          */
+/* ------------------------------------------------------------------ */
+
+.font-display {
+  font-family: var(--font-display), var(--font-inter), system-ui, sans-serif;
+}
+
+/* Contour de lettres, utilisé par le bandeau défilant. */
+.text-outline {
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgb(var(--ink));
+}
+
+/* Intro : masquée dès le départ si elle a déjà été vue dans cette session. */
+html.nova-seen .nova-preloader {
+  display: none;
+}
+
+/* Filet de sécurité : si le JavaScript ne démarre jamais, l'intro disparaît toute seule. */
+.nova-preloader {
+  animation: nova-failsafe 0s linear 7s forwards;
+}
+
+@keyframes nova-failsafe {
+  to {
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+/* Curseur personnalisé : actif seulement avec une vraie souris. */
+html.has-cursor,
+html.has-cursor * {
+  cursor: none !important;
+}
+
+html.has-cursor input,
+html.has-cursor textarea {
+  cursor: text !important;
+}
+
+/* Lettres du hero : l'éclairage dépend de la variable --p (0 à 1) posée par le curseur. */
+.hero-letter {
+  --p: 0;
+  transform: translateY(calc(var(--p) * -0.05em));
+  text-shadow: 0 0 calc(var(--p) * 0.45em) rgb(var(--accent) / calc(var(--p) * 0.85));
+  transition: transform 0.25s ease-out, text-shadow 0.25s ease-out;
 }

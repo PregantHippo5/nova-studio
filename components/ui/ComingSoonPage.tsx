@@ -2,6 +2,7 @@ import Container from '@/components/ui/Container';
 import SectionHeading from '@/components/ui/SectionHeading';
 import Reveal from '@/components/motion/Reveal';
 import Parallax from '@/components/motion/Parallax';
+import PillarArt from '@/components/home/PillarArt';
 import { CONTACT_EMAIL } from '@/lib/site';
 import { Dictionary } from '@/lib/i18n/dictionaries';
 
@@ -17,10 +18,12 @@ interface ComingSoonPageProps {
   title: string;
   description: string;
   items: Item[];
+  kind: 'learn' | 'games';
+  empty: { title: string; text: string };
 }
 
 /** Page « vitrine » partagée par Apprendre et Jeux tant qu'il n'y a pas de contenu publié. */
-export default function ComingSoonPage({ dict, eyebrow, title, description, items }: ComingSoonPageProps) {
+export default function ComingSoonPage({ dict, eyebrow, title, description, items, kind, empty }: ComingSoonPageProps) {
   return (
     <div className="relative overflow-hidden py-20 md:py-28">
       <Parallax distance={110} className="pointer-events-none absolute -right-24 top-16">
@@ -31,6 +34,20 @@ export default function ComingSoonPage({ dict, eyebrow, title, description, item
         <Reveal>
           <SectionHeading eyebrow={eyebrow} title={title} description={description} />
         </Reveal>
+
+        {items.length === 0 && (
+          <Reveal className="mt-14">
+            <div className="grid items-center gap-8 rounded-3xl border border-line bg-mist p-6 md:grid-cols-2 md:p-10">
+              <div className="aspect-[4/3] w-full" aria-hidden="true">
+                <PillarArt kind={kind} />
+              </div>
+              <div>
+                <h2 className="font-display text-display-3 font-bold text-ink balance">{empty.title}</h2>
+                <p className="mt-4 max-w-md leading-relaxed text-muted">{empty.text}</p>
+              </div>
+            </div>
+          </Reveal>
+        )}
 
         <div className="mt-14 grid gap-5 sm:grid-cols-2">
           {items.map((item, i) => (
