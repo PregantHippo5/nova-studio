@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import Container from '@/components/ui/Container';
 import SectionHeading from '@/components/ui/SectionHeading';
 import Reveal from '@/components/motion/Reveal';
@@ -10,6 +11,7 @@ interface Item {
   tag: string;
   title: string;
   text: string;
+  href?: string;
 }
 
 interface ComingSoonPageProps {
@@ -52,18 +54,35 @@ export default function ComingSoonPage({ dict, eyebrow, title, description, item
         <div className="mt-14 grid gap-5 sm:grid-cols-2">
           {items.map((item, i) => (
             <Reveal key={item.title} delay={i * 0.08}>
-              <div className="flex h-full flex-col gap-4 rounded-2xl border border-line bg-paper/70 p-7 backdrop-blur">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[0.7rem] uppercase tracking-[0.08em] text-muted">
-                    {item.tag}
-                  </span>
-                  <span className="rounded-full border border-line px-2.5 py-0.5 font-mono text-[0.65rem] uppercase tracking-[0.08em] text-muted">
-                    {dict.common.comingSoon}
-                  </span>
-                </div>
-                <h3 className="text-lg font-semibold text-ink">{item.title}</h3>
-                <p className="text-sm leading-relaxed text-muted">{item.text}</p>
-              </div>
+              {(() => {
+                const card = (
+                  <div
+                    className={`flex h-full flex-col gap-4 rounded-2xl border border-line bg-paper/70 p-7 backdrop-blur transition-colors ${
+                      item.href ? 'group-hover:border-[rgb(var(--c-learn))]' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[0.7rem] uppercase tracking-[0.08em] text-muted">
+                        {item.tag}
+                      </span>
+                      {!item.href && (
+                        <span className="rounded-full border border-line px-2.5 py-0.5 font-mono text-[0.65rem] uppercase tracking-[0.08em] text-muted">
+                          {dict.common.comingSoon}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-display text-xl font-bold text-ink">{item.title}</h3>
+                    <p className="text-sm leading-relaxed text-muted">{item.text}</p>
+                  </div>
+                );
+                return item.href ? (
+                  <Link href={item.href} className="group block h-full">
+                    {card}
+                  </Link>
+                ) : (
+                  card
+                );
+              })()}
             </Reveal>
           ))}
         </div>
