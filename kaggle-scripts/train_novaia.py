@@ -762,4 +762,118 @@ def main():
 
     # ========================================
     # REPRISE CHECKPOINT
-    #
+    # ========================================
+
+    checkpoint = None
+
+    if resume_requested and resume_checkpoint_name:
+
+        if not hf_repo:
+            raise ValueError(
+                "❌ resume_checkpoint fourni mais aucun repo HF "
+                "(--hf-repo / lora_repo) pour aller le chercher."
+            )
+
+        checkpoint = download_checkpoint_from_hub(
+            repo_id=hf_repo,
+            checkpoint_name=resume_checkpoint_name,
+            local_root=Path(args.out),
+        )
+
+    elif resume_requested:
+
+        checkpoint = find_latest_checkpoint(
+            args.out
+        )
+
+
+    if checkpoint is not None:
+
+        print()
+        print("========================================")
+        print("CHECKPOINT TROUVÉ")
+        print("========================================")
+        print(
+            "Reprise depuis :",
+            checkpoint
+        )
+        print()
+
+
+        trainer.train(
+            resume_from_checkpoint=str(checkpoint)
+        )
+
+    else:
+
+        if resume_requested:
+
+            print()
+            print("Aucun checkpoint trouvé.")
+            print("Démarrage d'un nouvel entraînement.")
+            print()
+
+        else:
+
+            print()
+            print("Nouvel entraînement.")
+            print()
+
+
+        trainer.train()
+
+
+    # ========================================
+    # SAUVEGARDE FINALE (locale)
+    # ========================================
+
+    print()
+    print("========================================")
+    print("Sauvegarde finale...")
+    print("========================================")
+
+
+    out = Path(args.out)
+
+    out.mkdir(
+        exist_ok=True,
+        parents=True
+    )
+
+
+    model.save_pretrained(
+        out
+    )
+
+
+    tokenizer.save_pretrained(
+        out
+    )
+
+
+    print()
+    print("========================================")
+    print("        ENTRAÎNEMENT TERMINÉ")
+    print("========================================")
+    print()
+    print(
+        "LoRA disponible dans:",
+        out
+    )
+    print()
+
+
+    # ========================================
+    # UPLOAD LORA FINAL (opt-in, remplace nova-lora/)
+    # ========================================
+
+    if lora_repo:
+        upload_final_lora(
+            local_dir=out,
+            repo_id=lora_repo,
+            path_in_repo=lora_path,
+        )
+
+
+if __name__ == "__main__":
+    main()
