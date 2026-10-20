@@ -9,6 +9,7 @@ const links = [
   { href: '/admin/journal', label: 'Journal' },
   { href: '/admin/roadmap', label: 'Roadmap' },
   { href: '/admin/team', label: 'Équipe' },
+  { href: '/admin/novaia-training', label: 'NovaIA Training' },
 ];
 
 export default function AdminShell({
