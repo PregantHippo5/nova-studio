@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DEFAULT_DATASET, TRAINING_DATASETS, type TrainingDatasetId } from '@/lib/training/datasets';
 
 /* =========================================================
    Types
@@ -443,6 +444,7 @@ export default function TrainingConsole() {
   const [checkpoints, setCheckpoints] = useState<HfCheckpoint[]>([]);
   const [checkpointsError, setCheckpointsError] = useState<string | null>(null);
 
+  const [dataset, setDataset] = useState<TrainingDatasetId>(DEFAULT_DATASET);
   const [epochs, setEpochs] = useState('1');
   const [batchSize, setBatchSize] = useState('1');
   const [gradAcc, setGradAcc] = useState('8');
@@ -624,6 +626,7 @@ export default function TrainingConsole() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          dataset,
           epochs: Number(epochs),
           batch_size: Number(batchSize),
           gradient_accumulation: Number(gradAcc),
@@ -784,8 +787,12 @@ export default function TrainingConsole() {
             </select>
 
             <label>DATASET</label>
-            <select disabled value="v3">
-              <option value="v3">novaia_qa_5000_v3.jsonl</option>
+            <select value={dataset} onChange={(e) => setDataset(e.target.value as TrainingDatasetId)} disabled={locked}>
+              {TRAINING_DATASETS.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.label}
+                </option>
+              ))}
             </select>
 
             <div className="nt-row">
@@ -954,6 +961,7 @@ export default function TrainingConsole() {
                     <tr>
                       <th>DATE</th>
                       <th>STATUT</th>
+                      <th>DATASET</th>
                       <th>EPOCHS</th>
                       <th>REPRISE</th>
                       <th>DURÉE</th>
@@ -969,6 +977,7 @@ export default function TrainingConsole() {
                           <td>
                             <span className={`nt-pill ${j.status}`}>{j.status.toUpperCase()}</span>
                           </td>
+                          <td>{j.dataset.replace('.jsonl', '')}</td>
                           <td>{j.epochs}</td>
                           <td>{j.resume ? j.resume_checkpoint ?? 'ON' : '—'}</td>
                           <td>{d !== null ? formatDuration(d) : '—'}</td>

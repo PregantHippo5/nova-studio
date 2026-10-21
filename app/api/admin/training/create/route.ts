@@ -4,14 +4,15 @@
 // ici — ça, c'est le rôle de /launch.
 //
 // Validation stricte : toute valeur hors bornes est refusée (400).
-// Le dataset et la destination du LoRA (repo + dossier) sont verrouillés
-// côté serveur : ce que le navigateur envoie pour ces champs est ignoré.
+// Le dataset doit faire partie de la liste autorisée (lib/training/datasets.ts).
+// La destination du LoRA (repo + dossier) est verrouillée côté serveur :
+// ce que le navigateur envoie pour ces champs est ignoré.
 
 import { requireAdmin } from '@/lib/requireAdmin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { listNovaiaCheckpoints } from '@/lib/huggingface/checkpoints';
+import { DEFAULT_DATASET, isAllowedDataset } from '@/lib/training/datasets';
 
-const LOCKED_DATASET = 'novaia_qa_5000_v3.jsonl';
 const LOCKED_LORA_REPO = 'novastudio123/novaia-checkpoints';
 const LOCKED_LORA_PATH = 'nova-lora';
 
@@ -24,6 +25,7 @@ const LIMITS = {
 };
 
 interface CreateJobBody {
+  dataset?: unknown;
   epochs?: unknown;
   batch_size?: unknown;
   gradient_accumulation?: unknown;
@@ -65,6 +67,11 @@ export async function POST(request: Request) {
     body = await request.json();
   } catch {
     return Response.json({ error: 'JSON invalide.' }, { status: 400 });
+  }
+
+  const dataset = body.dataset === undefined || body.dataset === null ? DEFAULT_DATASET : body.dataset;
+  if (!isAllowedDataset(dataset)) {
+    return Response.json({ error: "'dataset' n'est pas dans la liste des datasets autorisés." }, { status: 400 });
   }
 
   const epochs = readInt(body.epochs, 'epochs', null);
@@ -137,7 +144,7 @@ export async function POST(request: Request) {
     .from('training_jobs')
     .insert({
       created_by: user.id,
-      dataset: LOCKED_DATASET,
+      dataset,
       epochs: epochs.value,
       batch_size: batchSize.value,
       gradient_accumulation: gradAcc.value,
