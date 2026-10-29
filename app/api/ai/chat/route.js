@@ -74,7 +74,10 @@ export async function POST(request) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: model || 'mistral-small-latest',
+        // MISTRAL_MODEL_OVERRIDE (variable d'env Vercel, optionnelle) impose un modèle pour TOUS les
+        // clients SOCLE déjà installés, sans nouvelle version de l'app. Utile quand un modèle n'est
+        // plus accessible avec le plan Mistral utilisé (ex: plan Free → 429 "Rate limit exceeded").
+        model: process.env.MISTRAL_MODEL_OVERRIDE || model || 'mistral-small-latest',
         messages,
         temperature: typeof temperature === 'number' ? temperature : 0.3,
       }),
