@@ -188,7 +188,14 @@ const fr = {
     eyebrow: 'Le côté fun',
     title: 'Jeux',
     description: "De petits jeux pour décompresser.",
-    items: [] as { tag: string; title: string; text: string }[],
+    items: [
+      {
+        tag: 'Tycoon',
+        title: 'Nova Tycoon',
+        text: "Construis ton empire, monte dans le pass de saison et débloque des tenues à la roue. Solo ou en multi.",
+        href: '/games/nova-tycoon/index.html',
+      },
+    ] as { tag: string; title: string; text: string; href?: string }[],
     empty: {
       title: 'Le premier jeu arrive.',
       text: "Rien n'est encore jouable. En attendant, la balle continue de rebondir.",

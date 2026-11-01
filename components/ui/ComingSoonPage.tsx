@@ -76,9 +76,15 @@ export default function ComingSoonPage({ dict, eyebrow, title, description, item
                   </div>
                 );
                 return item.href ? (
-                  <Link href={item.href} className="group block h-full">
-                    {card}
-                  </Link>
+                  item.href.startsWith('/games/') ? (
+                    <a href={item.href} target="_blank" rel="noopener" className="group block h-full">
+                      {card}
+                    </a>
+                  ) : (
+                    <Link href={item.href} className="group block h-full">
+                      {card}
+                    </Link>
+                  )
                 ) : (
                   card
                 );

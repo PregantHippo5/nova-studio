@@ -188,7 +188,14 @@ const en: typeof fr = {
     eyebrow: 'The fun side',
     title: 'Games',
     description: "Small games to unwind.",
-    items: [] as { tag: string; title: string; text: string }[],
+    items: [
+      {
+        tag: 'Tycoon',
+        title: 'Nova Tycoon',
+        text: 'Build your empire, climb the season pass and unlock outfits from the wheel. Solo or multiplayer.',
+        href: '/games/nova-tycoon/index.html',
+      },
+    ] as { tag: string; title: string; text: string; href?: string }[],
     empty: {
       title: 'The first game is coming.',
       text: "Nothing is playable yet. Meanwhile, the ball keeps bouncing.",
