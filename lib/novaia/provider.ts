@@ -1,9 +1,12 @@
 // lib/novaia/provider.ts
 //
-// Seul fichier à modifier le jour où le vrai modèle est branché :
-// generateReply() renvoie la réponse de NovaIA. Pour l'instant, c'est un
-// répertoire de démonstration (aucun modèle, aucun appel externe).
-// Server-only : ne jamais importer depuis un composant client.
+// Seul fichier à modifier pour brancher le vrai modèle : generateReply() renvoie la réponse de NovaIA.
+// - Si NOVAIA_SPACE_URL est définie (Vercel > Settings > Environment Variables), la question part vers le
+//   Space Hugging Face de NovaIA (ZeroGPU), toujours depuis le serveur Next.js.
+//   NOVAIA_HF_TOKEN (facultatif mais conseillé) : jeton Hugging Face qui donne le quota GPU du compte.
+// - Sinon (développement local sans variables), on garde le répertoire de démonstration ci-dessous.
+// Server-only : ne jamais importer depuis un composant client. Ces variables ne doivent JAMAIS être
+// préfixées NEXT_PUBLIC_.
 
 export type ChatRole = 'user' | 'assistant';
 
@@ -21,11 +24,100 @@ export interface ReplyResult {
 
 type Lang = 'fr' | 'en';
 
+// --------------------------------------------------------------------------- vrai modèle (Space Hugging Face)
+
+const SPACE_URL = (process.env.NOVAIA_SPACE_URL ?? '').replace(/\/+$/, '');
+const HF_TOKEN = process.env.NOVAIA_HF_TOKEN ?? '';
+const MODEL_MAX_CHARS = 600; // même limite que le Space
+const TIMEOUT_MS = 55_000; // le premier message après une pause réveille le GPU : ça peut dépasser
+
+type Problem = 'sleeping' | 'busy' | 'quota' | 'down';
+
+const PROBLEMS: Record<Problem, Record<Lang, string>> = {
+  sleeping: {
+    fr: 'NovaIA se réveille (premier message après une pause). Réessaie dans 30 secondes.',
+    en: 'NovaIA is waking up (first message after a break). Try again in 30 seconds.',
+  },
+  busy: {
+    fr: "NovaIA est occupée avec d'autres questions. Réessaie dans un instant.",
+    en: 'NovaIA is busy with other questions. Try again in a moment.',
+  },
+  quota: {
+    fr: "NovaIA a utilisé tout son temps de calcul gratuit pour aujourd'hui. Réessaie plus tard ou demain.",
+    en: "NovaIA has used all of today's free compute time. Try again later or tomorrow.",
+  },
+  down: {
+    fr: 'NovaIA est indisponible pour le moment. Réessaie un peu plus tard.',
+    en: 'NovaIA is unavailable right now. Please try again later.',
+  },
+};
+
+/** Le Space (Gradio) répond en flux : on garde le dernier événement « complete » ou « error ». */
+function parseSse(text: string): { event: 'complete' | 'error'; data: string } | null {
+  let event = '';
+  let last: { event: 'complete' | 'error'; data: string } | null = null;
+
+  for (const line of text.split('\n')) {
+    if (line.startsWith('event:')) {
+      event = line.slice(6).trim();
+    } else if (line.startsWith('data:') && (event === 'complete' || event === 'error')) {
+      last = { event, data: line.slice(5).trim() };
+    }
+  }
+
+  return last;
+}
+
+async function askSpace(text: string, locale: Lang): Promise<ReplyResult> {
+  const problem = (p: Problem): ReplyResult => ({ reply: PROBLEMS[p][locale], mode: 'demo' });
+  const signal = AbortSignal.timeout(TIMEOUT_MS);
+  const auth: Record<string, string> = HF_TOKEN ? { Authorization: `Bearer ${HF_TOKEN}` } : {};
+
+  try {
+    // 1) on dépose la question : [message, historique interne (null), réflexion forcée (false)]
+    const start = await fetch(`${SPACE_URL}/gradio_api/call/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...auth },
+      // Le Space répond à une question à la fois (pas d'historique) : on envoie le dernier message.
+      body: JSON.stringify({ data: [text.slice(0, MODEL_MAX_CHARS), null, false] }),
+      signal,
+      cache: 'no-store',
+    });
+    if (start.status === 429) return problem('quota');
+    if (!start.ok) return problem(start.status >= 500 ? 'sleeping' : 'down');
+
+    const started = (await start.json().catch(() => null)) as { event_id?: unknown } | null;
+    if (!started || typeof started.event_id !== 'string') return problem('sleeping'); // page d'attente du Space
+
+    // 2) on attend la réponse
+    const stream = await fetch(`${SPACE_URL}/gradio_api/call/chat/${encodeURIComponent(started.event_id)}`, {
+      headers: auth,
+      signal,
+      cache: 'no-store',
+    });
+    if (!stream.ok) return problem('down');
+
+    const result = parseSse(await stream.text());
+    if (!result) return problem('down');
+    if (result.event === 'error') return problem(/quota/i.test(result.data) ? 'quota' : 'down');
+
+    const parsed = JSON.parse(result.data) as unknown;
+    const reply = Array.isArray(parsed) && typeof parsed[0] === 'string' ? parsed[0].trim() : '';
+    return reply ? { reply, mode: 'live' } : problem('down');
+  } catch (err) {
+    // Délai dépassé : le GPU est très probablement en train de démarrer.
+    const timedOut = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+    return problem(timedOut ? 'sleeping' : 'down');
+  }
+}
+
+// --------------------------------------------------------------------------- démonstration (repli local)
+
 function normalize(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -54,13 +146,13 @@ const RULES: Rule[] = [
   },
   {
     test: /\b(merci|thanks|thank you)\b/,
-    fr: "Avec plaisir. C'est d'autant plus facile que je ne fatigue pas.",
+    fr: 'Avec plaisir. C\'est d\'autant plus facile que je ne fatigue pas.',
     en: "My pleasure. It's easy, since I don't get tired.",
   },
   {
     test: /\b(ca va|comment vas[- ]?tu|how are you)\b/,
     fr: "Très bien, merci. Ma principale occupation du moment est d'attendre la fin de mon entraînement.",
-    en: "Very well, thank you. My main occupation at the moment is waiting for my training to finish.",
+    en: 'Very well, thank you. My main occupation at the moment is waiting for my training to finish.',
   },
   {
     test: /\b(bonjour|salut|bonsoir|coucou|hello|hi|hey|good (morning|evening))\b/,
@@ -88,6 +180,11 @@ function sleep(ms: number): Promise<void> {
 
 export async function generateReply(messages: ChatMessage[], locale: Lang): Promise<ReplyResult> {
   const last = [...messages].reverse().find((m) => m.role === 'user');
+
+  if (SPACE_URL && last?.content.trim()) {
+    return askSpace(last.content.trim(), locale);
+  }
+
   const text = normalize(last?.content ?? '');
 
   // Petit délai pour ressembler à une vraie réponse (et tester l'indicateur de chargement).

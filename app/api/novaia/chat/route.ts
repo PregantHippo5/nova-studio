@@ -13,6 +13,7 @@ import { generateReply, type ChatMessage } from '@/lib/novaia/provider';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // le premier message après une pause réveille le GPU du Space : jusqu'à ~1 min
 
 const MAX_BODY_BYTES = 30_000;
 const MAX_MESSAGES = 20;

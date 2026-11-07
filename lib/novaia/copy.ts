@@ -30,16 +30,16 @@ export interface NovaiaCopy {
 const fr: NovaiaCopy = {
   metaTitle: 'NovaIA',
   metaDescription:
-    "NovaIA, l'assistant de Nova Studio : clair, précis, poli et légèrement pince-sans-rire. Aperçu en cours d'entraînement.",
+    "NovaIA, l'assistant de Nova Studio : clair, précis, et qui préfère avouer qu'il ne sait pas plutôt qu'inventer.",
   eyebrow: 'Le côté IA',
   title: 'NovaIA',
   description:
-    "Un assistant polyvalent entraîné par Nova Studio. Clair, précis, poli et légèrement pince-sans-rire.",
-  previewBadge: 'Aperçu · le modèle est encore en entraînement, les réponses sont des démonstrations',
+    "Un assistant polyvalent entraîné par Nova Studio. Clair, précis, et qui préfère avouer qu'il ne sait pas plutôt qu'inventer.",
+  previewBadge: 'Version publique · peut se tromper',
   assistantName: 'NovaIA',
   emptyTitle: 'Pose une question.',
-  emptyText: "Pour l'instant, NovaIA répond avec un petit répertoire de démonstration. Le vrai modèle arrive.",
-  suggestions: ['Bonjour, qui es-tu ?', "Que sais-tu faire ?", "Explique-moi l'ozone simplement."],
+  emptyText: "NovaIA répond à une question à la fois, sans garder la conversation en mémoire. Les calculs demandent un peu plus de temps.",
+  suggestions: ['Qui es-tu ?', "Quelle est la capitale de l'Australie ?", 'Un cycliste roule à 24 km/h pendant 2 h 30. Quelle distance parcourt-il ?'],
   placeholder: 'Écris un message…',
   inputLabel: 'Message pour NovaIA',
   send: 'Envoyer',
@@ -47,23 +47,23 @@ const fr: NovaiaCopy = {
   thinking: 'NovaIA réfléchit…',
   error: 'Une erreur est survenue. Réessaie dans un instant.',
   rateLimited: 'Trop de messages d’affilée. Patiente quelques secondes.',
-  footnote: 'NovaIA peut se tromper. Ne partage pas d’informations personnelles.',
+  footnote: 'NovaIA peut se tromper : vérifie les informations importantes. Ne partage pas d’informations personnelles.',
   you: 'Toi',
 };
 
 const en: NovaiaCopy = {
   metaTitle: 'NovaIA',
   metaDescription:
-    "NovaIA, Nova Studio's assistant: clear, precise, polite and slightly deadpan. Preview, still in training.",
+    "NovaIA, Nova Studio's assistant: clear, precise, and would rather admit it doesn't know than make things up.",
   eyebrow: 'The AI side',
   title: 'NovaIA',
   description:
-    'A general-purpose assistant trained by Nova Studio. Clear, precise, polite and slightly deadpan.',
-  previewBadge: 'Preview · the model is still in training, replies are demonstrations',
+    "A general-purpose assistant trained by Nova Studio. Clear, precise, and would rather admit it doesn't know than make things up.",
+  previewBadge: 'Public version · can be wrong',
   assistantName: 'NovaIA',
   emptyTitle: 'Ask a question.',
-  emptyText: 'For now, NovaIA answers from a small demo repertoire. The real model is on its way.',
-  suggestions: ['Hello, who are you?', 'What can you do?', 'Explain ozone simply.'],
+  emptyText: 'NovaIA answers one question at a time, without keeping the conversation in memory. Calculations take a little longer. Replies are in French.',
+  suggestions: ['Who are you?', 'What is the capital of Australia?', 'A cyclist rides at 24 km/h for 2 h 30. How far does he go?'],
   placeholder: 'Write a message…',
   inputLabel: 'Message for NovaIA',
   send: 'Send',
@@ -71,7 +71,7 @@ const en: NovaiaCopy = {
   thinking: 'NovaIA is thinking…',
   error: 'Something went wrong. Please try again in a moment.',
   rateLimited: 'Too many messages in a row. Please wait a few seconds.',
-  footnote: 'NovaIA can be wrong. Do not share personal information.',
+  footnote: 'NovaIA can be wrong: double-check important information. Do not share personal information.',
   you: 'You',
 };
 

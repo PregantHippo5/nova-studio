@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { Locale } from '@/lib/i18n/config';
 import type { NovaiaCopy } from '@/lib/novaia/copy';
+import FormattedReply from '@/components/novaia/FormattedReply';
 
 interface UiMessage {
   id: number;
@@ -12,7 +13,7 @@ interface UiMessage {
   error?: boolean;
 }
 
-const MAX_LEN = 1000;
+const MAX_LEN = 600; // même limite que le Space de NovaIA (au-delà, le message serait refusé)
 const HISTORY_SENT = 12;
 
 /** Petit noyau qui respire : rappel discret du « core » du prototype, dans la DA du site. */
@@ -196,7 +197,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   : 'rounded-bl-md border border-line bg-paper text-ink'
               }`}
             >
-              {m.content}
+              {m.role === 'assistant' && !m.error ? <FormattedReply text={m.content} /> : m.content}
             </div>
           </div>
         ))}
