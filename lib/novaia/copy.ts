@@ -25,6 +25,26 @@ export interface NovaiaCopy {
   rateLimited: string;
   footnote: string;
   you: string;
+  // page « façon ChatGPT » : historique, actions
+  sidebarTitle: string;
+  untitled: string;
+  noConversations: string;
+  groupToday: string;
+  groupYesterday: string;
+  groupWeek: string;
+  groupOlder: string;
+  rename: string;
+  remove: string;
+  removeConfirm: string;
+  clearAll: string;
+  clearAllConfirm: string;
+  savedLocally: string;
+  copy: string;
+  copied: string;
+  regenerate: string;
+  stop: string;
+  openMenu: string;
+  closeMenu: string;
 }
 
 const fr: NovaiaCopy = {
@@ -49,6 +69,25 @@ const fr: NovaiaCopy = {
   rateLimited: 'Trop de messages d’affilée. Patiente quelques secondes.',
   footnote: 'NovaIA peut se tromper : vérifie les informations importantes. Ne partage pas d’informations personnelles.',
   you: 'Toi',
+  sidebarTitle: 'Conversations',
+  untitled: 'Nouvelle conversation',
+  noConversations: 'Tes conversations apparaîtront ici.',
+  groupToday: "Aujourd'hui",
+  groupYesterday: 'Hier',
+  groupWeek: '7 derniers jours',
+  groupOlder: 'Plus ancien',
+  rename: 'Renommer',
+  remove: 'Supprimer',
+  removeConfirm: 'Supprimer cette conversation ?',
+  clearAll: 'Tout effacer',
+  clearAllConfirm: 'Effacer toutes les conversations de cet appareil ?',
+  savedLocally: 'Enregistré sur cet appareil uniquement.',
+  copy: 'Copier',
+  copied: 'Copié',
+  regenerate: 'Régénérer',
+  stop: 'Arrêter',
+  openMenu: 'Ouvrir les conversations',
+  closeMenu: 'Fermer les conversations',
 };
 
 const en: NovaiaCopy = {
@@ -73,6 +112,25 @@ const en: NovaiaCopy = {
   rateLimited: 'Too many messages in a row. Please wait a few seconds.',
   footnote: 'NovaIA can be wrong: double-check important information. Do not share personal information.',
   you: 'You',
+  sidebarTitle: 'Conversations',
+  untitled: 'New conversation',
+  noConversations: 'Your conversations will show up here.',
+  groupToday: 'Today',
+  groupYesterday: 'Yesterday',
+  groupWeek: 'Last 7 days',
+  groupOlder: 'Older',
+  rename: 'Rename',
+  remove: 'Delete',
+  removeConfirm: 'Delete this conversation?',
+  clearAll: 'Clear all',
+  clearAllConfirm: 'Clear all conversations on this device?',
+  savedLocally: 'Saved on this device only.',
+  copy: 'Copy',
+  copied: 'Copied',
+  regenerate: 'Regenerate',
+  stop: 'Stop',
+  openMenu: 'Open conversations',
+  closeMenu: 'Close conversations',
 };
 
 export function novaiaCopy(locale: Locale): NovaiaCopy {

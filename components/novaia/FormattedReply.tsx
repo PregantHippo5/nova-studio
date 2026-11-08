@@ -1,7 +1,16 @@
 import { splitBlocks, splitInline } from '@/lib/novaia/format';
+import CodeBlock from '@/components/novaia/CodeBlock';
 
-/** Affiche une réponse de NovaIA : LaTeX converti en texte lisible, **gras**, `code` et blocs de code. */
-export default function FormattedReply({ text }: { text: string }) {
+/** Affiche une réponse de NovaIA : LaTeX converti en texte lisible, **gras**, `code` et blocs de code colorés avec bouton Copier. */
+export default function FormattedReply({
+  text,
+  copyLabel = 'Copier',
+  copiedLabel = 'Copié',
+}: {
+  text: string;
+  copyLabel?: string;
+  copiedLabel?: string;
+}) {
   const blocks = splitBlocks(text);
   if (blocks.length === 0) return <>{text}</>;
 
@@ -9,12 +18,7 @@ export default function FormattedReply({ text }: { text: string }) {
     <div className="space-y-2">
       {blocks.map((b, i) =>
         b.type === 'code' ? (
-          <pre
-            key={i}
-            className="overflow-x-auto whitespace-pre rounded-lg border border-line bg-mist px-3 py-2 font-mono text-[0.82rem] leading-relaxed text-ink"
-          >
-            <code>{b.text}</code>
-          </pre>
+          <CodeBlock key={i} code={b.text} lang={b.lang} copyLabel={copyLabel} copiedLabel={copiedLabel} />
         ) : (
           <p key={i} className="whitespace-pre-wrap break-words">
             {splitInline(b.text).map((s, j) =>

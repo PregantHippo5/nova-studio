@@ -63,7 +63,7 @@ export function cleanMath(text: string): string {
     .replace(/\n{3,}/g, '\n\n');
 }
 
-export type Block = { type: 'text'; text: string } | { type: 'code'; text: string };
+export type Block = { type: 'text'; text: string } | { type: 'code'; text: string; lang?: string };
 
 /** Sépare le texte et les blocs de code (```…```). Un bloc non fermé va jusqu'à la fin. */
 export function splitBlocks(text: string): Block[] {
@@ -76,8 +76,10 @@ export function splitBlocks(text: string): Block[] {
       if (t.trim()) blocks.push({ type: 'text', text: t });
     } else {
       // la première ligne d'un bloc est souvent le nom du langage (python, js…)
+      const head = part.match(/^([a-zA-Z0-9+#_-]*)\n/);
       const code = part.replace(/^[a-zA-Z0-9+#_-]*\n/, '').replace(/\n+$/, '');
-      if (code.trim()) blocks.push({ type: 'code', text: code });
+      const lang = head && head[1] ? head[1].toLowerCase() : undefined;
+      if (code.trim()) blocks.push({ type: 'code', text: code, lang });
     }
   });
 
