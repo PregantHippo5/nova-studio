@@ -4,6 +4,8 @@
 // - Si NOVAIA_SPACE_URL est définie (Vercel > Settings > Environment Variables), la question part vers le
 //   Space Hugging Face de NovaIA (ZeroGPU), toujours depuis le serveur Next.js.
 //   NOVAIA_HF_TOKEN (facultatif mais conseillé) : jeton Hugging Face qui donne le quota GPU du compte.
+//   NOVAIA_USE_HISTORY=1 : envoie aussi les derniers échanges (mémoire de conversation). À activer SEULEMENT quand le
+//   Space charge l'adaptateur v2 (entraîné sur des dialogues à plusieurs tours). Sans cette variable : une question à la fois.
 // - Sinon (développement local sans variables), on garde le répertoire de démonstration ci-dessous.
 // Server-only : ne jamais importer depuis un composant client. Ces variables ne doivent JAMAIS être
 // préfixées NEXT_PUBLIC_.
@@ -29,9 +31,16 @@ type Lang = 'fr' | 'en';
 const SPACE_URL = (process.env.NOVAIA_SPACE_URL ?? '').replace(/\/+$/, '');
 const HF_TOKEN = process.env.NOVAIA_HF_TOKEN ?? '';
 const MODEL_MAX_CHARS = 600; // même limite que le Space
+const USE_HISTORY = process.env.NOVAIA_USE_HISTORY === '1';
+const HISTORY_MESSAGES = 9; // 4 échanges + la question en cours (le Space en garde autant)
+const HISTORY_ASSISTANT_CHARS = 700; // même limite que le Space
 const TIMEOUT_MS = 55_000; // le premier message après une pause réveille le GPU : ça peut dépasser
 
 type Problem = 'sleeping' | 'busy' | 'quota' | 'down';
+
+// Messages de ZeroGPU quand le temps de calcul gratuit est (presque) épuisé : « exceeded your GPU quota »,
+// « requested GPU duration (150s) is larger than the maximum allowed », etc.
+const QUOTA_HINT = /quota|maximum allowed|exceeded|GPU duration/i;
 
 const PROBLEMS: Record<Problem, Record<Lang, string>> = {
   sleeping: {
@@ -68,46 +77,70 @@ function parseSse(text: string): { event: 'complete' | 'error'; data: string } |
   return last;
 }
 
-async function askSpace(text: string, locale: Lang): Promise<ReplyResult> {
-  const problem = (p: Problem): ReplyResult => ({ reply: PROBLEMS[p][locale], mode: 'demo' });
+async function askSpace(messages: ChatMessage[], locale: Lang): Promise<ReplyResult> {
+  // Mémoire activée et conversation commencée : endpoint /chat_history (JSON des derniers messages). Sinon : /chat, une question.
+  const useHistory = USE_HISTORY && messages.length > 1;
+  const api = useHistory ? 'chat_history' : 'chat';
+  const lastText = messages[messages.length - 1].content.trim();
+  const data: unknown[] = useHistory
+    ? [
+        JSON.stringify(
+          messages.slice(-HISTORY_MESSAGES).map((m) => ({
+            role: m.role,
+            content: m.content.trim().slice(0, m.role === 'user' ? MODEL_MAX_CHARS : HISTORY_ASSISTANT_CHARS),
+          }))
+        ),
+        false,
+      ]
+    : [lastText.slice(0, MODEL_MAX_CHARS), null, false];
+
   const signal = AbortSignal.timeout(TIMEOUT_MS);
   const auth: Record<string, string> = HF_TOKEN ? { Authorization: `Bearer ${HF_TOKEN}` } : {};
 
+  // La vraie cause est écrite dans les journaux du serveur (jamais de jeton) ; l'utilisateur ne voit qu'un message simple.
+  const fail = (p: Problem, detail: string): ReplyResult => {
+    console.error(`[novaia] ${p} : ${detail}`);
+    return { reply: PROBLEMS[p][locale], mode: 'demo' };
+  };
+  const snippet = async (res: Response) => (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200);
+
   try {
-    // 1) on dépose la question : [message, historique interne (null), réflexion forcée (false)]
-    const start = await fetch(`${SPACE_URL}/gradio_api/call/chat`, {
+    // 1) on dépose la question. /chat : [message, historique interne (null), réflexion forcée (false)] ; /chat_history : [JSON, false]
+    const start = await fetch(`${SPACE_URL}/gradio_api/call/${api}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...auth },
-      // Le Space répond à une question à la fois (pas d'historique) : on envoie le dernier message.
-      body: JSON.stringify({ data: [text.slice(0, MODEL_MAX_CHARS), null, false] }),
+      body: JSON.stringify({ data }),
       signal,
       cache: 'no-store',
     });
-    if (start.status === 429) return problem('quota');
-    if (!start.ok) return problem(start.status >= 500 ? 'sleeping' : 'down');
+    if (start.status === 429) return fail('quota', `dépôt refusé (429) ${await snippet(start)}`);
+    if (!start.ok) return fail(start.status >= 500 ? 'sleeping' : 'down', `dépôt refusé (${start.status}) ${await snippet(start)}`);
 
     const started = (await start.json().catch(() => null)) as { event_id?: unknown } | null;
-    if (!started || typeof started.event_id !== 'string') return problem('sleeping'); // page d'attente du Space
+    if (!started || typeof started.event_id !== 'string') return fail('sleeping', 'réponse sans event_id (Space en attente ?)');
 
     // 2) on attend la réponse
-    const stream = await fetch(`${SPACE_URL}/gradio_api/call/chat/${encodeURIComponent(started.event_id)}`, {
+    const stream = await fetch(`${SPACE_URL}/gradio_api/call/${api}/${encodeURIComponent(started.event_id)}`, {
       headers: auth,
       signal,
       cache: 'no-store',
     });
-    if (!stream.ok) return problem('down');
+    if (!stream.ok) return fail('down', `lecture refusée (${stream.status}) ${await snippet(stream)}`);
 
-    const result = parseSse(await stream.text());
-    if (!result) return problem('down');
-    if (result.event === 'error') return problem(/quota/i.test(result.data) ? 'quota' : 'down');
+    const raw = await stream.text();
+    const result = parseSse(raw);
+    if (!result) return fail('down', `flux sans résultat : ${raw.replace(/\s+/g, ' ').slice(0, 200)}`);
+    if (result.event === 'error') {
+      return fail(QUOTA_HINT.test(result.data) ? 'quota' : 'down', `erreur du Space : ${result.data.slice(0, 200)}`);
+    }
 
     const parsed = JSON.parse(result.data) as unknown;
     const reply = Array.isArray(parsed) && typeof parsed[0] === 'string' ? parsed[0].trim() : '';
-    return reply ? { reply, mode: 'live' } : problem('down');
+    return reply ? { reply, mode: 'live' } : fail('down', `réponse vide : ${result.data.slice(0, 200)}`);
   } catch (err) {
     // Délai dépassé : le GPU est très probablement en train de démarrer.
     const timedOut = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
-    return problem(timedOut ? 'sleeping' : 'down');
+    return fail(timedOut ? 'sleeping' : 'down', `${err instanceof Error ? err.name + ' ' + err.message : String(err)}`);
   }
 }
 
@@ -182,7 +215,7 @@ export async function generateReply(messages: ChatMessage[], locale: Lang): Prom
   const last = [...messages].reverse().find((m) => m.role === 'user');
 
   if (SPACE_URL && last?.content.trim()) {
-    return askSpace(last.content.trim(), locale);
+    return askSpace(messages, locale);
   }
 
   const text = normalize(last?.content ?? '');
