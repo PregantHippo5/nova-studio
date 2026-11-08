@@ -7,6 +7,7 @@ import {
   NOVAIA_KERNEL_OWNER,
   type TrainingConfig,
 } from '@/lib/kaggle/client';
+import { V2_DATASET_ID } from '@/lib/training/datasets';
 
 interface LaunchBody {
   jobId: string;
@@ -103,13 +104,15 @@ export async function POST(request: Request) {
   let scriptSource: string;
 
   try {
-    const scriptPath = path.join(process.cwd(), 'kaggle-scripts', 'train_novaia.py');
+    // v2 (Qwen3-8B) : script séparé. Tous les autres datasets gardent l'ancien script, inchangé.
+    const scriptFile = job.dataset === V2_DATASET_ID ? 'train_novaia_v2.py' : 'train_novaia.py';
+    const scriptPath = path.join(process.cwd(), 'kaggle-scripts', scriptFile);
     scriptSource = await fs.readFile(scriptPath, 'utf-8');
   } catch (e) {
     return Response.json(
       {
         error:
-          "Impossible de lire kaggle-scripts/train_novaia.py. Vérifie qu'il est bien présent dans le repo déployé.",
+          "Impossible de lire le script d'entraînement dans kaggle-scripts/. Vérifie qu'il est bien présent dans le repo déployé.",
         detail: e instanceof Error ? e.message : String(e),
       },
       { status: 500 }
@@ -197,4 +200,4 @@ export async function POST(request: Request) {
   }
 
   return Response.json({ job: updatedJob, kaggle: pushResult });
-}
+}

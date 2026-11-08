@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_DATASET, TRAINING_DATASETS, type TrainingDatasetId } from '@/lib/training/datasets';
+import { DEFAULT_DATASET, TRAINING_DATASETS, V2_DATASET_ID, type TrainingDatasetId } from '@/lib/training/datasets';
 
 /* =========================================================
    Types
@@ -476,6 +476,7 @@ export default function TrainingConsole() {
   const isActive = Boolean(activeJob);
   const launching = busy === 'launching';
   const locked = isActive || busy !== null;
+  const isV2 = dataset === V2_DATASET_ID;
 
   /* ---------- Chargement liste + checkpoints ---------- */
 
@@ -539,7 +540,7 @@ export default function TrainingConsole() {
         const short = job.id.slice(0, 8);
 
         if (job.status === 'running') addLog('NOVA', `Job ${short} : l'apprentissage a commencé.`);
-        if (job.status === 'complete') addLog('NOVA', `Job ${short} : entraînement terminé. LoRA publié (${job.lora_path}/).`);
+        if (job.status === 'complete') addLog('NOVA', `Job ${short} : entraînement terminé. LoRA publié (${job.dataset === V2_DATASET_ID ? 'v2-qwen3' : job.lora_path}/).`);
         if (job.status === 'failed') addLog('SYSTEM', `Job ${short} : échec. ${job.error_message ?? ''}`.trim());
         if (job.status === 'cancelled') addLog('SYSTEM', `Job ${short} : annulé.`);
       }
@@ -783,7 +784,7 @@ export default function TrainingConsole() {
 
             <label>MODEL</label>
             <select disabled value="qwen">
-              <option value="qwen">Qwen2.5-3B-Instruct · QLoRA 4-bit</option>
+              <option value="qwen">{`${isV2 ? 'Qwen3-8B' : 'Qwen2.5-3B-Instruct'} · QLoRA 4-bit`}</option>
             </select>
 
             <label>DATASET</label>
@@ -794,6 +795,13 @@ export default function TrainingConsole() {
                 </option>
               ))}
             </select>
+
+            {isV2 && (
+              <div className="nt-hint">
+                v2 : réglages conseillés 2 epochs, accumulation 8, learning rate 0.0001. Dure environ 1 h 30 à 2 h 30 sur la T4 (distillation,
+                entraînement, examen). Pas de reprise sur checkpoint en v2.
+              </div>
+            )}
 
             <div className="nt-row">
               <div>
@@ -864,7 +872,7 @@ export default function TrainingConsole() {
               </div>
               <div>
                 <label>LORA PATH</label>
-                <input value="nova-lora" disabled readOnly />
+                <input value={isV2 ? 'v2-qwen3' : 'nova-lora'} disabled readOnly />
               </div>
             </div>
 
@@ -893,7 +901,7 @@ export default function TrainingConsole() {
 
             <div className="nt-status"><span>PROVIDER</span><strong>KAGGLE</strong></div>
             <div className="nt-status"><span>GPU</span><strong>NVIDIA TESLA T4</strong></div>
-            <div className="nt-status"><span>MODEL</span><strong>QWEN2.5-3B-INSTRUCT</strong></div>
+            <div className="nt-status"><span>MODEL</span><strong>{isV2 ? 'QWEN3-8B' : 'QWEN2.5-3B-INSTRUCT'}</strong></div>
             <div className="nt-status"><span>METHOD</span><strong>QLORA 4-BIT</strong></div>
             <div className="nt-status"><span>ENGINE</span><strong>TRL · PEFT</strong></div>
             <div className="nt-status"><span>DESTINATION</span><strong>HUGGING FACE</strong></div>

@@ -17,7 +17,16 @@ export const TRAINING_DATASETS = [
     id: 'novaia_mix_v1.jsonl',
     label: 'novaia_mix_v1 — personnalité + Wikipedia (12 597 exemples)',
   },
+  {
+    id: 'novaia_v2_qwen3.jsonl',
+    label: 'NovaIA v2 — Qwen3-8B : mémoire de conversation + raisonnement (script v2)',
+  },
 ] as const;
+
+// Entraînement v2 : autre modèle (Qwen3-8B), autre script (kaggle-scripts/train_novaia_v2.py).
+// Il lit ses fichiers (perso_train.jsonl, questions_v3.jsonl, logique_distille.jsonl) dans le dataset Kaggle 'new-good',
+// et dépose l'adaptateur dans {lora_repo}/v2-qwen3/ : il ne touche jamais à nova-lora/ ni aux checkpoints de l'ancien run.
+export const V2_DATASET_ID = 'novaia_v2_qwen3.jsonl';
 
 export type TrainingDatasetId = (typeof TRAINING_DATASETS)[number]['id'];
 
