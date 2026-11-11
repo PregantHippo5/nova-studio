@@ -45,6 +45,15 @@ export interface NovaiaCopy {
   stop: string;
   openMenu: string;
   closeMenu: string;
+  // images
+  attach: string;
+  attachHint: string;
+  removeImage: string;
+  imageAttached: string;
+  imageDefaultQuestion: string;
+  imageError: string;
+  imageTooBig: string;
+  imagePlaceholder: string;
 }
 
 const fr: NovaiaCopy = {
@@ -88,6 +97,14 @@ const fr: NovaiaCopy = {
   stop: 'Arrêter',
   openMenu: 'Ouvrir les conversations',
   closeMenu: 'Fermer les conversations',
+  attach: 'Joindre une image',
+  attachHint: 'Photo d’un cours, d’un schéma, d’une écriture… L’image n’est pas enregistrée.',
+  removeImage: 'Retirer l’image',
+  imageAttached: 'Image jointe',
+  imageDefaultQuestion: 'Décris cette image et recopie le texte qu’elle contient.',
+  imageError: 'Cette image ne peut pas être lue. Essaie une photo JPEG ou PNG.',
+  imageTooBig: 'Image trop lourde. Essaie une photo plus légère.',
+  imagePlaceholder: 'Pose une question sur l’image (facultatif)…',
 };
 
 const en: NovaiaCopy = {
@@ -131,6 +148,14 @@ const en: NovaiaCopy = {
   stop: 'Stop',
   openMenu: 'Open conversations',
   closeMenu: 'Close conversations',
+  attach: 'Attach an image',
+  attachHint: 'A photo of a lesson, a diagram, handwriting… The image is not saved.',
+  removeImage: 'Remove image',
+  imageAttached: 'Attached image',
+  imageDefaultQuestion: 'Describe this image and copy the text it contains.',
+  imageError: 'This image cannot be read. Try a JPEG or PNG photo.',
+  imageTooBig: 'Image too large. Try a lighter photo.',
+  imagePlaceholder: 'Ask a question about the image (optional)…',
 };
 
 export function novaiaCopy(locale: Locale): NovaiaCopy {

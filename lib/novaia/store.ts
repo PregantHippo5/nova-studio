@@ -9,6 +9,8 @@ export interface StoredMessage {
   role: 'user' | 'assistant';
   content: string;
   error?: boolean;
+  /** message envoyé avec une image (l'image elle-même n'est jamais enregistrée) */
+  image?: boolean;
 }
 
 export interface Conversation {
@@ -52,10 +54,16 @@ export function titleFrom(text: string): string {
 
 function sanitizeMessage(x: unknown): StoredMessage | null {
   if (typeof x !== 'object' || x === null) return null;
-  const { id, role, content, error } = x as Record<string, unknown>;
+  const { id, role, content, error, image } = x as Record<string, unknown>;
   if (typeof id !== 'number' || (role !== 'user' && role !== 'assistant') || typeof content !== 'string') return null;
   if (!content.trim()) return null;
-  return { id, role, content: content.slice(0, MAX_STORED_CONTENT), ...(error === true ? { error: true } : {}) };
+  return {
+    id,
+    role,
+    content: content.slice(0, MAX_STORED_CONTENT),
+    ...(error === true ? { error: true } : {}),
+    ...(image === true ? { image: true } : {}),
+  };
 }
 
 function sanitizeConversation(x: unknown): Conversation | null {

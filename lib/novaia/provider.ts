@@ -24,7 +24,7 @@ export interface ReplyResult {
   mode: ReplyMode;
 }
 
-type Lang = 'fr' | 'en';
+export type Lang = 'fr' | 'en';
 
 // --------------------------------------------------------------------------- vrai modèle (Space Hugging Face)
 
@@ -36,13 +36,13 @@ const HISTORY_MESSAGES = 9; // 4 échanges + la question en cours (le Space en g
 const HISTORY_ASSISTANT_CHARS = 700; // même limite que le Space
 const TIMEOUT_MS = 55_000; // le premier message après une pause réveille le GPU : ça peut dépasser
 
-type Problem = 'sleeping' | 'busy' | 'quota' | 'down';
+export type Problem = 'sleeping' | 'busy' | 'quota' | 'down';
 
 // Messages de ZeroGPU quand le temps de calcul gratuit est (presque) épuisé : « exceeded your GPU quota »,
 // « requested GPU duration (150s) is larger than the maximum allowed », etc.
-const QUOTA_HINT = /quota|maximum allowed|exceeded|GPU duration/i;
+export const QUOTA_HINT = /quota|maximum allowed|exceeded|GPU duration/i;
 
-const PROBLEMS: Record<Problem, Record<Lang, string>> = {
+export const PROBLEMS: Record<Problem, Record<Lang, string>> = {
   sleeping: {
     fr: 'NovaIA se réveille (premier message après une pause). Réessaie dans 30 secondes.',
     en: 'NovaIA is waking up (first message after a break). Try again in 30 seconds.',
@@ -62,7 +62,7 @@ const PROBLEMS: Record<Problem, Record<Lang, string>> = {
 };
 
 /** Le Space (Gradio) répond en flux : on garde le dernier événement « complete » ou « error ». */
-function parseSse(text: string): { event: 'complete' | 'error'; data: string } | null {
+export function parseSse(text: string): { event: 'complete' | 'error'; data: string } | null {
   let event = '';
   let last: { event: 'complete' | 'error'; data: string } | null = null;
 

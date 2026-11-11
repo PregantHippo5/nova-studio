@@ -6,6 +6,7 @@ import type { Locale } from '@/lib/i18n/config';
 import type { NovaiaCopy } from '@/lib/novaia/copy';
 import FormattedReply from '@/components/novaia/FormattedReply';
 import CopyButton from '@/components/novaia/CopyButton';
+import { prepareImage, type PreparedImage } from '@/lib/novaia/image';
 import {
   MAX_CONVERSATIONS,
   MAX_MESSAGES,
@@ -89,6 +90,18 @@ const Icon = {
       <rect x="6" y="6" width="12" height="12" rx="2" />
     </svg>
   ),
+  clip: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 11.5l-8.2 8.2a5 5 0 01-7-7l8.6-8.6a3.4 3.4 0 014.8 4.8l-8.6 8.6a1.8 1.8 0 01-2.5-2.5l7.9-7.9" />
+    </svg>
+  ),
+  image: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="9" cy="10" r="1.5" />
+      <path d="M21 16l-5-5-8 8" />
+    </svg>
+  ),
 };
 
 export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: NovaiaCopy }) {
@@ -100,6 +113,9 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const [drawer, setDrawer] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [attachment, setAttachment] = useState<PreparedImage | null>(null);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -162,7 +178,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   // ----- échange avec le serveur
 
   const ask = useCallback(
-    async (convId: string, history: StoredMessage[]) => {
+    async (convId: string, history: StoredMessage[], image?: string) => {
       const controller = new AbortController();
       abortRef.current = controller;
       setLoadingId(convId);
@@ -188,17 +204,25 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
         .map((m) => ({ role: m.role, content: m.content.slice(0, MAX_SENT_CONTENT) }));
 
       try {
-        const res = await fetch('/api/novaia/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ locale, messages: payload }),
-          signal: controller.signal,
-        });
+        // Avec une image : route « vision » (question = dernier message) ; sinon : chat avec mémoire de conversation.
+        const res = image
+          ? await fetch('/api/novaia/vision', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ locale, question: history[history.length - 1]?.content ?? '', image }),
+              signal: controller.signal,
+            })
+          : await fetch('/api/novaia/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ locale, messages: payload }),
+              signal: controller.signal,
+            });
 
         const data: { reply?: unknown } = await res.json().catch(() => ({}));
 
         if (!res.ok || typeof data.reply !== 'string') {
-          push(res.status === 429 ? copy.rateLimited : copy.error, true);
+          push(res.status === 429 ? copy.rateLimited : res.status === 413 ? copy.imageTooBig : copy.error, true);
         } else {
           push(data.reply);
         }
@@ -209,12 +233,13 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
         if (mounted.current) setLoadingId((cur) => (cur === convId ? null : cur));
       }
     },
-    [locale, copy.error, copy.rateLimited]
+    [locale, copy.error, copy.rateLimited, copy.imageTooBig]
   );
 
   const send = useCallback(
     (text: string) => {
-      const content = text.trim().slice(0, MAX_LEN);
+      const image = attachment?.dataUrl;
+      const content = text.trim().slice(0, MAX_LEN) || (image ? copy.imageDefaultQuestion : '');
       if (!content || loading) return;
 
       let convId = activeId;
@@ -222,7 +247,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
       if (!convId || !convs.some((c) => c.id === convId)) {
         const c = newConversation(titleFrom(content));
-        const userMessage: StoredMessage = { id: 1, role: 'user', content };
+        const userMessage: StoredMessage = { id: 1, role: 'user', content, ...(image ? { image: true } : {}) };
         c.messages = [userMessage];
         convId = c.id;
         history = c.messages;
@@ -230,7 +255,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
         setActiveId(c.id);
       } else {
         const cur = convs.find((c) => c.id === convId) as Conversation;
-        const userMessage: StoredMessage = { id: nextMessageId(cur), role: 'user', content };
+        const userMessage: StoredMessage = { id: nextMessageId(cur), role: 'user', content, ...(image ? { image: true } : {}) };
         history = [...cur.messages, userMessage];
         const id = convId;
         setConvs((prev) =>
@@ -241,10 +266,23 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       }
 
       setInput('');
-      void ask(convId, history);
+      setAttachment(null);
+      setAttachError(null);
+      void ask(convId, history, image);
     },
-    [activeId, convs, loading, ask]
+    [activeId, convs, loading, ask, attachment, copy.imageDefaultQuestion]
   );
+
+  const attachFile = async (file: File | undefined) => {
+    if (!file) return;
+    setAttachError(null);
+    try {
+      setAttachment(await prepareImage(file));
+    } catch (e) {
+      setAttachment(null);
+      setAttachError(e instanceof Error && e.message === 'size' ? copy.imageTooBig : copy.imageError);
+    }
+  };
 
   const stop = () => {
     abortRef.current?.abort();
@@ -324,9 +362,11 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   }, [ordered, copy.groupToday, copy.groupYesterday, copy.groupWeek, copy.groupOlder]);
 
   const empty = messages.length === 0;
-  const canSend = input.trim().length > 0 && !loading;
+  const canSend = (input.trim().length > 0 || attachment !== null) && !loading;
   const lastMessage = messages[messages.length - 1];
-  const canRegenerate = !loading && lastMessage?.role === 'assistant';
+  // une réponse à une image ne se régénère pas : l'image n'est pas conservée
+  const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user');
+  const canRegenerate = !loading && lastMessage?.role === 'assistant' && !lastUserMessage?.image;
   const headerTitle = active ? active.title : copy.untitled;
 
   return (
@@ -521,6 +561,12 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                         : 'rounded-bl-md border border-line bg-paper text-ink'
                     }`}
                   >
+                    {m.image && (
+                      <span className="mb-1 flex items-center gap-1 text-[0.72rem] opacity-70">
+                        {Icon.image}
+                        {copy.imageAttached}
+                      </span>
+                    )}
                     {m.role === 'assistant' && !m.error ? (
                       <FormattedReply text={m.content} copyLabel={copy.copy} copiedLabel={copy.copied} />
                     ) : (
@@ -570,7 +616,46 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           className="border-t border-line bg-paper/60 p-3 backdrop-blur"
         >
           <div className="mx-auto w-full max-w-3xl">
+            {(attachment || attachError) && (
+              <div className="mb-2 flex items-center gap-2 px-1 text-[0.75rem] text-muted">
+                {attachment && (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={attachment.thumb} alt="" className="h-12 w-12 rounded-lg border border-line object-cover" />
+                    <span>{copy.imageAttached}</span>
+                    <button
+                      type="button"
+                      onClick={() => setAttachment(null)}
+                      className="rounded-full border border-line px-2 py-0.5 transition-colors hover:bg-mist hover:text-ink"
+                    >
+                      {copy.removeImage}
+                    </button>
+                  </>
+                )}
+                {attachError && <span role="alert">{attachError}</span>}
+              </div>
+            )}
             <div className="flex items-end gap-2 rounded-2xl border border-line bg-paper px-3 py-2 focus-within:border-ink/40">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  void attachFile(e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={loading}
+                aria-label={copy.attach}
+                title={`${copy.attach} — ${copy.attachHint}`}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-mist hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                {Icon.clip}
+              </button>
               <label htmlFor="novaia-input" className="sr-only">
                 {copy.inputLabel}
               </label>
@@ -585,8 +670,15 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                     send(input);
                   }
                 }}
+                onPaste={(e) => {
+                  const f = Array.from(e.clipboardData?.files ?? []).find((x) => x.type.startsWith('image/'));
+                  if (f) {
+                    e.preventDefault();
+                    void attachFile(f);
+                  }
+                }}
                 rows={1}
-                placeholder={copy.placeholder}
+                placeholder={attachment ? copy.imagePlaceholder : copy.placeholder}
                 className="max-h-40 flex-1 resize-none bg-transparent py-1.5 text-[0.92rem] text-ink outline-none placeholder:text-muted"
               />
               {loading ? (
