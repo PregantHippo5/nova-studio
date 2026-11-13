@@ -26,6 +26,8 @@ export interface NovaiaCopy {
   statusThink: string;
   statusWrite: string;
   sources: string;
+  backToSite: string;
+  greeting: string;
   error: string;
   rateLimited: string;
   footnote: string;
@@ -86,6 +88,8 @@ const fr: NovaiaCopy = {
   statusThink: 'Réflexion',
   statusWrite: 'Rédaction de la réponse',
   sources: 'Sources',
+  backToSite: 'Retour au site',
+  greeting: 'Salut. Qu’est-ce qu’on cherche ?',
   error: 'Une erreur est survenue. Réessaie dans un instant.',
   rateLimited: 'Trop de messages d’affilée. Patiente quelques secondes.',
   footnote: 'NovaIA peut se tromper : vérifie les informations importantes. Ne partage pas d’informations personnelles.',
@@ -144,6 +148,8 @@ const en: NovaiaCopy = {
   statusThink: 'Thinking it through',
   statusWrite: 'Writing the answer',
   sources: 'Sources',
+  backToSite: 'Back to the site',
+  greeting: 'Hi. What are we looking for?',
   error: 'Something went wrong. Please try again in a moment.',
   rateLimited: 'Too many messages in a row. Please wait a few seconds.',
   footnote: 'NovaIA can be wrong: double-check important information. Do not share personal information.',
