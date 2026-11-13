@@ -11,6 +11,32 @@ export interface StoredMessage {
   error?: boolean;
   /** message envoyé avec une image (l'image elle-même n'est jamais enregistrée) */
   image?: boolean;
+  /** pages consultées pour répondre (recherche Wikipédia) */
+  sources?: Source[];
+}
+
+export interface Source {
+  title: string;
+  url: string;
+}
+
+/** Une source n'est affichée que si c'est un lien https vers Wikipédia (la valeur vient du Space : on ne lui fait pas confiance). */
+export function cleanSources(x: unknown): Source[] {
+  if (!Array.isArray(x)) return [];
+  const out: Source[] = [];
+  for (const s of x.slice(0, 3)) {
+    if (typeof s !== 'object' || s === null) continue;
+    const { title, url } = s as Record<string, unknown>;
+    if (typeof title !== 'string' || typeof url !== 'string') continue;
+    try {
+      const u = new URL(url);
+      if (u.protocol !== 'https:' || !(u.hostname === 'wikipedia.org' || u.hostname.endsWith('.wikipedia.org'))) continue;
+      out.push({ title: title.slice(0, 120), url: u.toString() });
+    } catch {
+      /* lien invalide : ignoré */
+    }
+  }
+  return out;
 }
 
 export interface Conversation {
@@ -54,7 +80,7 @@ export function titleFrom(text: string): string {
 
 function sanitizeMessage(x: unknown): StoredMessage | null {
   if (typeof x !== 'object' || x === null) return null;
-  const { id, role, content, error, image } = x as Record<string, unknown>;
+  const { id, role, content, error, image, sources } = x as Record<string, unknown>;
   if (typeof id !== 'number' || (role !== 'user' && role !== 'assistant') || typeof content !== 'string') return null;
   if (!content.trim()) return null;
   return {
@@ -63,6 +89,7 @@ function sanitizeMessage(x: unknown): StoredMessage | null {
     content: content.slice(0, MAX_STORED_CONTENT),
     ...(error === true ? { error: true } : {}),
     ...(image === true ? { image: true } : {}),
+    ...(cleanSources(sources).length ? { sources: cleanSources(sources) } : {}),
   };
 }
 

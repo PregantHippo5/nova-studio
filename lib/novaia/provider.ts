@@ -19,10 +19,18 @@ export interface ChatMessage {
 
 export type ReplyMode = 'demo' | 'live';
 
+export interface ReplySource {
+  title: string;
+  url: string;
+}
+
 export interface ReplyResult {
   reply: string;
   mode: ReplyMode;
+  sources?: ReplySource[];
 }
+
+export type ReplyState = 'recherche' | 'calcul' | 'reflexion' | 'redaction';
 
 export type Lang = 'fr' | 'en';
 
@@ -231,4 +239,140 @@ export async function generateReply(messages: ChatMessage[], locale: Lang): Prom
 
   const pool = FALLBACKS[locale];
   return { reply: pool[text.length % pool.length], mode: 'demo' };
+}
+
+
+// --------------------------------------------------------------------------- réponse « en direct » (états + sources)
+
+const STATES: ReplyState[] = ['recherche', 'calcul', 'reflexion', 'redaction'];
+
+/**
+ * Comme generateReply, mais avertit au fil de l'eau de ce que fait NovaIA (recherche, calcul, réflexion, rédaction)
+ * et renvoie les sources à part. Utilise l'entrée /chat_stream du Space ; si elle n'existe pas encore (Space pas
+ * à jour) ou si quelque chose échoue avant la réponse, on retombe sur generateReply (comportement d'avant).
+ */
+export async function streamReply(
+  messages: ChatMessage[],
+  locale: Lang,
+  emit: (state: ReplyState) => void
+): Promise<ReplyResult> {
+  const last = [...messages].reverse().find((m) => m.role === 'user');
+  if (!SPACE_URL || !last?.content.trim()) return generateReply(messages, locale);
+
+  const sent = USE_HISTORY ? messages.slice(-HISTORY_MESSAGES) : [last];
+  const payload = JSON.stringify(
+    sent.map((m) => ({
+      role: m.role,
+      content: m.content.trim().slice(0, m.role === 'user' ? MODEL_MAX_CHARS : HISTORY_ASSISTANT_CHARS),
+    }))
+  );
+  const signal = AbortSignal.timeout(TIMEOUT_MS);
+  const auth: Record<string, string> = HF_TOKEN ? { Authorization: `Bearer ${HF_TOKEN}` } : {};
+
+  let started: { event_id?: unknown } | null = null;
+  try {
+    const start = await fetch(`${SPACE_URL}/gradio_api/call/chat_stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...auth },
+      body: JSON.stringify({ data: [payload, false] }),
+      signal,
+      cache: 'no-store',
+    });
+    if (start.status === 429) {
+      console.error('[novaia] quota : dépôt refusé (429) chat_stream');
+      return { reply: PROBLEMS.quota[locale], mode: 'demo' };
+    }
+    if (!start.ok) return generateReply(messages, locale); // Space pas encore à jour : ancien chemin
+    started = (await start.json().catch(() => null)) as { event_id?: unknown } | null;
+  } catch (err) {
+    console.error(`[novaia] chat_stream indisponible : ${err instanceof Error ? err.name : String(err)}`);
+    return generateReply(messages, locale);
+  }
+  if (!started || typeof started.event_id !== 'string') return generateReply(messages, locale);
+
+  const fail = (p: Problem, detail: string): ReplyResult => {
+    console.error(`[novaia] ${p} : ${detail}`);
+    return { reply: PROBLEMS[p][locale], mode: 'demo' };
+  };
+
+  try {
+    const stream = await fetch(`${SPACE_URL}/gradio_api/call/chat_stream/${encodeURIComponent(started.event_id)}`, {
+      headers: auth,
+      signal,
+      cache: 'no-store',
+    });
+    if (!stream.ok || !stream.body) return fail('down', `lecture refusée (${stream.status})`);
+
+    const reader = stream.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let event = '';
+    let final: ReplyResult | null = null;
+
+    const handleLine = (line: string): ReplyResult | null => {
+      if (line.startsWith('event:')) {
+        event = line.slice(6).trim();
+        return null;
+      }
+      if (!line.startsWith('data:')) return null;
+      const data = line.slice(5).trim();
+      if (event === 'error') {
+        return fail(QUOTA_HINT.test(data) ? 'quota' : 'down', `erreur du Space : ${data.slice(0, 200)}`);
+      }
+      if (event !== 'generating' && event !== 'complete') return null;
+      try {
+        const outer = JSON.parse(data) as unknown;
+        const inner = Array.isArray(outer) && typeof outer[0] === 'string' ? (JSON.parse(outer[0]) as Record<string, unknown>) : null;
+        if (!inner) return null;
+        if (typeof inner.etat === 'string' && (STATES as string[]).includes(inner.etat)) emit(inner.etat as ReplyState);
+        if (typeof inner.texte === 'string' && inner.texte.trim()) {
+          return { reply: inner.texte.trim(), mode: 'live', sources: cleanReplySources(inner.sources) };
+        }
+      } catch {
+        /* ligne incomplète ou inattendue : ignorée */
+      }
+      return null;
+    };
+
+    for (;;) {
+      const { done, value } = await reader.read();
+      buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+      let nl: number;
+      while ((nl = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, nl).replace(/\r$/, '');
+        buffer = buffer.slice(nl + 1);
+        const r = handleLine(line);
+        if (r) final = r;
+      }
+      if (done) break;
+    }
+    if (buffer.trim()) {
+      const r = handleLine(buffer.trim());
+      if (r) final = r;
+    }
+    return final ?? fail('down', 'flux sans résultat');
+  } catch (err) {
+    const timedOut = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+    return fail(timedOut ? 'sleeping' : 'down', `${err instanceof Error ? err.name + ' ' + err.message : String(err)}`);
+  }
+}
+
+/** Sources : liens https vers Wikipédia seulement (la valeur vient du Space). */
+function cleanReplySources(x: unknown): ReplySource[] {
+  if (!Array.isArray(x)) return [];
+  const out: ReplySource[] = [];
+  for (const s of x.slice(0, 3)) {
+    if (typeof s !== 'object' || s === null) continue;
+    const { titre, url } = s as Record<string, unknown>;
+    if (typeof titre !== 'string' || typeof url !== 'string') continue;
+    try {
+      const u = new URL(url);
+      if (u.protocol === 'https:' && (u.hostname === 'wikipedia.org' || u.hostname.endsWith('.wikipedia.org'))) {
+        out.push({ title: titre.slice(0, 120), url: u.toString() });
+      }
+    } catch {
+      /* ignoré */
+    }
+  }
+  return out;
 }

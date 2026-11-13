@@ -9,7 +9,7 @@
 //    propre mémoire). Suffisant pour la démo ; à remplacer par une vraie limite
 //    (Supabase / Upstash) avant de brancher un modèle payant.
 
-import { generateReply, type ChatMessage } from '@/lib/novaia/provider';
+import { generateReply, streamReply, type ChatMessage } from '@/lib/novaia/provider';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Trop de requêtes. Réessayez dans un instant.' }, { status: 429 });
   }
 
-  let body: { locale?: unknown; messages?: unknown };
+  let body: { locale?: unknown; messages?: unknown; stream?: unknown };
 
   try {
     const raw = await request.text();
@@ -99,6 +99,36 @@ export async function POST(request: Request) {
   }
 
   const locale = body.locale === 'en' ? 'en' : 'fr';
+
+  // Mode « en direct » : une ligne JSON par événement ({t:'etat', v} puis {t:'fin', ...résultat}).
+  if (body.stream === true) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const write = (obj: unknown) => {
+          try {
+            controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
+          } catch {
+            /* le navigateur a fermé la connexion */
+          }
+        };
+        try {
+          const result = await streamReply(messages, locale, (v) => write({ t: 'etat', v }));
+          write({ t: 'fin', ...result });
+        } catch {
+          write({ t: 'err' });
+        }
+        try {
+          controller.close();
+        } catch {
+          /* déjà fermé */
+        }
+      },
+    });
+    return new Response(stream, {
+      headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store, no-transform', 'X-Accel-Buffering': 'no' },
+    });
+  }
 
   try {
     const result = await generateReply(messages, locale);

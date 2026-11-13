@@ -7,10 +7,12 @@ import type { NovaiaCopy } from '@/lib/novaia/copy';
 import FormattedReply from '@/components/novaia/FormattedReply';
 import CopyButton from '@/components/novaia/CopyButton';
 import { prepareImage, type PreparedImage } from '@/lib/novaia/image';
+import type { ReplyState } from '@/lib/novaia/provider';
 import {
   MAX_CONVERSATIONS,
   MAX_MESSAGES,
   MAX_TITLE,
+  cleanSources,
   clearStored,
   dateGroup,
   loadConversations,
@@ -20,6 +22,7 @@ import {
   titleFrom,
   type Conversation,
   type DateGroup,
+  type Source,
   type StoredMessage,
 } from '@/lib/novaia/store';
 
@@ -110,11 +113,14 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const [ready, setReady] = useState(false);
   const [input, setInput] = useState('');
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [steps, setSteps] = useState<ReplyState[]>([]); // ce que NovaIA fait en ce moment (recherche, calcul, réflexion, rédaction)
   const [drawer, setDrawer] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [attachment, setAttachment] = useState<PreparedImage | null>(null);
   const [attachError, setAttachError] = useState<string | null>(null);
+  // image active par conversation : en mémoire seulement (jamais enregistrée), perdue au rechargement de la page
+  const [imageByConv, setImageByConv] = useState<Record<string, PreparedImage>>({});
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -159,6 +165,8 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const ordered = useMemo(() => [...convs].sort((a, b) => b.updatedAt - a.updatedAt), [convs]);
   const active = useMemo(() => convs.find((c) => c.id === activeId) ?? null, [convs, activeId]);
   const messages: StoredMessage[] = active?.messages ?? [];
+  const stepLabel = (s: ReplyState) =>
+    s === 'recherche' ? copy.statusSearch : s === 'calcul' ? copy.statusCalc : s === 'reflexion' ? copy.statusThink : copy.statusWrite;
   const loading = loadingId !== null;
   const loadingHere = loadingId !== null && loadingId === activeId;
 
@@ -182,8 +190,9 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       const controller = new AbortController();
       abortRef.current = controller;
       setLoadingId(convId);
+      setSteps([]);
 
-      const push = (reply: string, error = false) => {
+      const push = (reply: string, error = false, sources: Source[] = []) => {
         if (!mounted.current) return;
         setConvs((prev) =>
           prev.map((c) =>
@@ -192,7 +201,10 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
               : {
                   ...c,
                   updatedAt: Date.now(),
-                  messages: [...c.messages, { id: nextMessageId(c), role: 'assistant' as const, content: reply, error }].slice(-MAX_MESSAGES),
+                  messages: [
+                    ...c.messages,
+                    { id: nextMessageId(c), role: 'assistant' as const, content: reply, error, ...(sources.length ? { sources } : {}) },
+                  ].slice(-MAX_MESSAGES),
                 }
           )
         );
@@ -209,22 +221,64 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           ? await fetch('/api/novaia/vision', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ locale, question: history[history.length - 1]?.content ?? '', image }),
+              body: JSON.stringify({ locale, question: history[history.length - 1]?.content ?? '', image, history: payload.slice(-7, -1) }),
               signal: controller.signal,
             })
           : await fetch('/api/novaia/chat', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ locale, messages: payload }),
+              body: JSON.stringify({ locale, messages: payload, stream: true }),
               signal: controller.signal,
             });
 
-        const data: { reply?: unknown } = await res.json().catch(() => ({}));
+        if (res.ok && res.body && (res.headers.get('content-type') ?? '').includes('ndjson')) {
+          // mode « en direct » : une ligne JSON par événement (état, puis résultat)
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let done = false;
+          let answered = false;
 
-        if (!res.ok || typeof data.reply !== 'string') {
-          push(res.status === 429 ? copy.rateLimited : res.status === 413 ? copy.imageTooBig : copy.error, true);
+          const handle = (line: string) => {
+            if (!line.trim()) return;
+            let ev: { t?: unknown; v?: unknown; reply?: unknown; sources?: unknown; mode?: unknown };
+            try {
+              ev = JSON.parse(line);
+            } catch {
+              return;
+            }
+            if (ev.t === 'etat' && typeof ev.v === 'string') {
+              const v = ev.v as ReplyState;
+              if (mounted.current) setSteps((prev) => (prev.includes(v) ? prev : [...prev, v]));
+            } else if (ev.t === 'fin' && typeof ev.reply === 'string') {
+              answered = true;
+              push(ev.reply, false, cleanSources(ev.sources));
+            } else if (ev.t === 'err') {
+              answered = true;
+              push(copy.error, true);
+            }
+          };
+
+          while (!done) {
+            const chunk = await reader.read();
+            done = chunk.done;
+            buffer += decoder.decode(chunk.value ?? new Uint8Array(), { stream: !chunk.done });
+            let nl: number;
+            while ((nl = buffer.indexOf('\n')) >= 0) {
+              handle(buffer.slice(0, nl));
+              buffer = buffer.slice(nl + 1);
+            }
+          }
+          handle(buffer);
+          if (!answered && !controller.signal.aborted) push(copy.error, true);
         } else {
-          push(data.reply);
+          const data: { reply?: unknown } = await res.json().catch(() => ({}));
+
+          if (!res.ok || typeof data.reply !== 'string') {
+            push(res.status === 429 ? copy.rateLimited : res.status === 413 ? copy.imageTooBig : copy.error, true);
+          } else {
+            push(data.reply);
+          }
         }
       } catch {
         if (!controller.signal.aborted) push(copy.error, true);
@@ -238,8 +292,9 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
   const send = useCallback(
     (text: string) => {
-      const image = attachment?.dataUrl;
-      const content = text.trim().slice(0, MAX_LEN) || (image ? copy.imageDefaultQuestion : '');
+      const known = activeId ? imageByConv[activeId] : undefined;
+      const image = (attachment ?? known)?.dataUrl; // nouvelle image, sinon celle déjà active dans la conversation
+      const content = text.trim().slice(0, MAX_LEN) || (attachment ? copy.imageDefaultQuestion : '');
       if (!content || loading) return;
 
       let convId = activeId;
@@ -266,11 +321,15 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       }
 
       setInput('');
+      if (attachment) {
+        const id = convId;
+        setImageByConv((prev) => ({ ...prev, [id]: attachment }));
+      }
       setAttachment(null);
       setAttachError(null);
       void ask(convId, history, image);
     },
-    [activeId, convs, loading, ask, attachment, copy.imageDefaultQuestion]
+    [activeId, convs, loading, ask, attachment, imageByConv, copy.imageDefaultQuestion]
   );
 
   const attachFile = async (file: File | undefined) => {
@@ -306,6 +365,8 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     if (loading) return;
     setActiveId(null);
     setInput('');
+    setAttachment(null);
+    setAttachError(null);
     setDrawer(false);
     setRenamingId(null);
     textareaRef.current?.focus();
@@ -314,6 +375,8 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const openConv = (id: string) => {
     if (renamingId) return;
     setActiveId(id);
+    setAttachment(null);
+    setAttachError(null);
     setDrawer(false);
   };
 
@@ -362,6 +425,8 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   }, [ordered, copy.groupToday, copy.groupYesterday, copy.groupWeek, copy.groupOlder]);
 
   const empty = messages.length === 0;
+  const activeImage = attachment ?? (activeId ? imageByConv[activeId] : undefined);
+  const imageLost = !activeImage && messages.some((m) => m.image);
   const canSend = (input.trim().length > 0 || attachment !== null) && !loading;
   const lastMessage = messages[messages.length - 1];
   // une réponse à une image ne se régénère pas : l'image n'est pas conservée
@@ -574,6 +639,24 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                     )}
                   </div>
 
+                  {m.role === 'assistant' && m.sources && m.sources.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 px-1 text-[0.72rem] text-muted">
+                      <span className="mr-0.5">{copy.sources}</span>
+                      {m.sources.map((s) => (
+                        <a
+                          key={s.url}
+                          href={s.url}
+                          target="_blank"
+                          rel="noopener noreferrer nofollow"
+                          className="max-w-[14rem] truncate rounded-full border border-line px-2.5 py-0.5 transition-colors hover:border-ink hover:text-ink"
+                          title={s.title}
+                        >
+                          {s.title}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+
                   {m.role === 'assistant' && (
                     <div className="mt-1 flex items-center gap-3 px-1 text-[0.72rem] text-muted">
                       {!m.error && <CopyButton text={m.content} label={copy.copy} copiedLabel={copy.copied} />}
@@ -591,17 +674,33 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
             {loadingHere && (
               <div className="flex justify-start">
                 <div
-                  className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-line bg-paper px-4 py-3"
+                  className="min-w-[11rem] rounded-2xl rounded-bl-md border border-line bg-paper px-4 py-3 text-[0.82rem] text-muted"
                   role="status"
+                  aria-live="polite"
                   aria-label={copy.thinking}
                 >
-                  {[0, 1, 2].map((i) => (
-                    <span
-                      key={i}
-                      className="h-1.5 w-1.5 animate-pulse rounded-full bg-muted"
-                      style={{ animationDelay: `${i * 180}ms` }}
-                    />
-                  ))}
+                  {steps.length > 1 && (
+                    <ul className="mb-1.5 space-y-0.5">
+                      {steps.slice(0, -1).map((st) => (
+                        <li key={st} className="flex items-center gap-1.5 opacity-70">
+                          <span aria-hidden>✓</span>
+                          {stepLabel(st)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex items-center gap-1" aria-hidden>
+                      {[0, 1, 2].map((i) => (
+                        <span
+                          key={i}
+                          className="h-1.5 w-1.5 animate-pulse rounded-full bg-muted"
+                          style={{ animationDelay: `${i * 180}ms` }}
+                        />
+                      ))}
+                    </span>
+                    <span>{steps.length ? stepLabel(steps[steps.length - 1]) : copy.thinking}…</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -616,16 +715,26 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           className="border-t border-line bg-paper/60 p-3 backdrop-blur"
         >
           <div className="mx-auto w-full max-w-3xl">
-            {(attachment || attachError) && (
+            {(activeImage || attachError || imageLost) && (
               <div className="mb-2 flex items-center gap-2 px-1 text-[0.75rem] text-muted">
-                {attachment && (
+                {activeImage && (
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={attachment.thumb} alt="" className="h-12 w-12 rounded-lg border border-line object-cover" />
-                    <span>{copy.imageAttached}</span>
+                    <img src={activeImage.thumb} alt="" className="h-12 w-12 rounded-lg border border-line object-cover" />
+                    <span>{attachment ? copy.imageAttached : copy.imageActive}</span>
                     <button
                       type="button"
-                      onClick={() => setAttachment(null)}
+                      onClick={() => {
+                        setAttachment(null);
+                        if (activeId) {
+                          const id = activeId;
+                          setImageByConv((prev) => {
+                            const rest = { ...prev };
+                            delete rest[id];
+                            return rest;
+                          });
+                        }
+                      }}
                       className="rounded-full border border-line px-2 py-0.5 transition-colors hover:bg-mist hover:text-ink"
                     >
                       {copy.removeImage}
@@ -633,6 +742,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   </>
                 )}
                 {attachError && <span role="alert">{attachError}</span>}
+                {!activeImage && !attachError && imageLost && <span>{copy.imageLost}</span>}
               </div>
             )}
             <div className="flex items-end gap-2 rounded-2xl border border-line bg-paper px-3 py-2 focus-within:border-ink/40">
@@ -678,7 +788,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   }
                 }}
                 rows={1}
-                placeholder={attachment ? copy.imagePlaceholder : copy.placeholder}
+                placeholder={activeImage ? copy.imagePlaceholder : copy.placeholder}
                 className="max-h-40 flex-1 resize-none bg-transparent py-1.5 text-[0.92rem] text-ink outline-none placeholder:text-muted"
               />
               {loading ? (

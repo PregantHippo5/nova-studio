@@ -86,22 +86,67 @@ export function splitBlocks(text: string): Block[] {
   return blocks;
 }
 
-export type Inline = { type: 'text' | 'bold' | 'code'; text: string };
+export type Inline = { type: 'text' | 'bold' | 'code' | 'italic'; text: string } | { type: 'link'; text: string; href: string };
 
 /** Découpe une ligne en texte / **gras** / `code`. Les titres Markdown (# Titre) deviennent du gras. */
 export function splitInline(text: string): Inline[] {
   const src = text.replace(/^[ \t]*#{1,6}[ \t]+(.+)$/gm, '**$1**');
   const out: Inline[] = [];
-  const re = /\*\*([^*\n]+?)\*\*|`([^`\n]+)`/g;
+  const re = /\*\*([^*\n]+?)\*\*|`([^`\n]+)`|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(?<![*\w])\*([^*\s][^*\n]*?[^*\s]|[^*\s])\*(?![*\w])/g;
   let last = 0;
   let m: RegExpExecArray | null;
 
   while ((m = re.exec(src)) !== null) {
     if (m.index > last) out.push({ type: 'text', text: src.slice(last, m.index) });
-    out.push(m[1] !== undefined ? { type: 'bold', text: m[1] } : { type: 'code', text: m[2] });
+    out.push(
+      m[1] !== undefined
+        ? { type: 'bold', text: m[1] }
+        : m[2] !== undefined
+          ? { type: 'code', text: m[2] }
+          : m[3] !== undefined
+            ? { type: 'link', text: m[3], href: m[4] }
+            : { type: 'italic', text: m[5] }
+    );
     last = m.index + m[0].length;
   }
   if (last < src.length) out.push({ type: 'text', text: src.slice(last) });
 
   return out;
+}
+
+export type TextPart =
+  | { type: 'para'; text: string }
+  | { type: 'ul'; items: string[] }
+  | { type: 'ol'; items: string[]; start: number };
+
+/** Découpe un bloc de texte en paragraphes et listes (- … / 1. …). Une ligne vide sépare deux paragraphes. */
+export function splitText(text: string): TextPart[] {
+  const parts: TextPart[] = [];
+  let para: string[] = [];
+  const flush = () => {
+    if (para.length) parts.push({ type: 'para', text: para.join('\n') });
+    para = [];
+  };
+
+  for (const line of text.split('\n')) {
+    const ul = line.match(/^\s*[-*•]\s+(.+)$/);
+    const ol = line.match(/^\s*(\d{1,2})[.)]\s+(.+)$/);
+    const last = parts[parts.length - 1];
+    if (ul) {
+      flush();
+      if (last && last.type === 'ul' && para.length === 0) last.items.push(ul[1]);
+      else parts.push({ type: 'ul', items: [ul[1]] });
+    } else if (ol) {
+      flush();
+      if (last && last.type === 'ol') last.items.push(ol[2]);
+      else parts.push({ type: 'ol', items: [ol[2]], start: Number(ol[1]) });
+    } else if (!line.trim()) {
+      flush();
+      // une ligne vide ferme la liste en cours : le point suivant en ouvre une nouvelle seulement s'il y a du texte entre les deux
+    } else {
+      para.push(line);
+    }
+  }
+  flush();
+  return parts;
 }

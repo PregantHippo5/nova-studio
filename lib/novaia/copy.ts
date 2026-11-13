@@ -21,6 +21,11 @@ export interface NovaiaCopy {
   send: string;
   newChat: string;
   thinking: string;
+  statusSearch: string;
+  statusCalc: string;
+  statusThink: string;
+  statusWrite: string;
+  sources: string;
   error: string;
   rateLimited: string;
   footnote: string;
@@ -50,6 +55,8 @@ export interface NovaiaCopy {
   attachHint: string;
   removeImage: string;
   imageAttached: string;
+  imageActive: string;
+  imageLost: string;
   imageDefaultQuestion: string;
   imageError: string;
   imageTooBig: string;
@@ -74,6 +81,11 @@ const fr: NovaiaCopy = {
   send: 'Envoyer',
   newChat: 'Nouvelle conversation',
   thinking: 'NovaIA réfléchit…',
+  statusSearch: 'Recherche sur Wikipédia',
+  statusCalc: 'Calcul en cours',
+  statusThink: 'Réflexion',
+  statusWrite: 'Rédaction de la réponse',
+  sources: 'Sources',
   error: 'Une erreur est survenue. Réessaie dans un instant.',
   rateLimited: 'Trop de messages d’affilée. Patiente quelques secondes.',
   footnote: 'NovaIA peut se tromper : vérifie les informations importantes. Ne partage pas d’informations personnelles.',
@@ -101,6 +113,8 @@ const fr: NovaiaCopy = {
   attachHint: 'Photo d’un cours, d’un schéma, d’une écriture… L’image n’est pas enregistrée.',
   removeImage: 'Retirer l’image',
   imageAttached: 'Image jointe',
+  imageActive: 'Image active dans cette conversation',
+  imageLost: 'L’image n’est plus disponible (elle n’est jamais enregistrée). Joins-la à nouveau pour continuer d’en parler.',
   imageDefaultQuestion: 'Décris cette image et recopie le texte qu’elle contient.',
   imageError: 'Cette image ne peut pas être lue. Essaie une photo JPEG ou PNG.',
   imageTooBig: 'Image trop lourde. Essaie une photo plus légère.',
@@ -125,6 +139,11 @@ const en: NovaiaCopy = {
   send: 'Send',
   newChat: 'New conversation',
   thinking: 'NovaIA is thinking…',
+  statusSearch: 'Searching Wikipedia',
+  statusCalc: 'Calculating',
+  statusThink: 'Thinking it through',
+  statusWrite: 'Writing the answer',
+  sources: 'Sources',
   error: 'Something went wrong. Please try again in a moment.',
   rateLimited: 'Too many messages in a row. Please wait a few seconds.',
   footnote: 'NovaIA can be wrong: double-check important information. Do not share personal information.',
@@ -152,6 +171,8 @@ const en: NovaiaCopy = {
   attachHint: 'A photo of a lesson, a diagram, handwriting… The image is not saved.',
   removeImage: 'Remove image',
   imageAttached: 'Attached image',
+  imageActive: 'Image active in this conversation',
+  imageLost: 'The image is no longer available (it is never saved). Attach it again to keep talking about it.',
   imageDefaultQuestion: 'Describe this image and copy the text it contains.',
   imageError: 'This image cannot be read. Try a JPEG or PNG photo.',
   imageTooBig: 'Image too large. Try a lighter photo.',
