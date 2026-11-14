@@ -5,7 +5,6 @@ import SetHtmlLang from '@/components/layout/SetHtmlLang';
 import ThemeScript from '@/components/fx/ThemeScript';
 import ThemeSync from '@/components/fx/ThemeSync';
 import Preloader from '@/components/fx/Preloader';
-import CustomCursor from '@/components/fx/CustomCursor';
 import { display } from '@/lib/fonts';
 import ScrollProgress from '@/components/motion/ScrollProgress';
 import { locales, isLocale, defaultLocale, Locale } from '@/lib/i18n/config';
@@ -50,7 +49,6 @@ export default function LocaleLayout({
       <ThemeSync />
       <ScrollProgress />
       <Preloader />
-      <CustomCursor />
       <div className={`${display.variable} flex flex-1 flex-col`}>
         <Navbar locale={locale} dict={dict} />
         <main className="flex-1">{children}</main>

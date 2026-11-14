@@ -12,6 +12,9 @@ import NovaiaPrefs from '@/components/novaia/NovaiaPrefs';
 import { prefsCopy } from '@/lib/novaia/prefsCopy';
 import { applyDims, cleanDims, cleanStyle, type Style } from '@/lib/novaia/style';
 import { detectFact } from '@/lib/novaia/facts';
+import { fetchRemote, mergeConversations, pushConversation, pushDeletion, purgeOldDeletions, deleteAllRemote } from '@/lib/novaia/sync';
+import { putDoc, loadConvDocs, deleteConvDocs, clearAllDocs } from '@/lib/novaia/files';
+import { isPdf, openPdf, type OpenedPdf } from '@/lib/novaia/pdf';
 import { createClient } from '@/lib/supabase/client';
 import {
   MAX_CONVERSATIONS,
@@ -112,6 +115,13 @@ const Icon = {
   ),
 };
 
+interface AttachedDoc {
+  thumb: string;
+  dataUrl: string;
+  label: string;
+  fresh: boolean; // nouvelle pièce jointe (et pas une image déjà active reprise pour une question suivante)
+}
+
 export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: NovaiaCopy }) {
   const [convs, setConvs] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -126,6 +136,8 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const [userId, setUserId] = useState<string | null>(null);
   const [style, setStyle] = useState<Style>({});
   const [consent, setConsent] = useState<boolean | null>(null);
+  const [syncOn, setSyncOn] = useState(false);
+  const pushedRef = useRef<Map<string, number>>(new Map());
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [prefsError, setPrefsError] = useState(false);
   const styleRef = useRef<Style>({});
@@ -138,6 +150,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     }
   }, []);
 
+  const [pdf, setPdf] = useState<{ doc: OpenedPdf; page: number; busy: boolean } | null>(null);
   const [facts, setFacts] = useState<{ id: number; content: string }[]>([]);
   const factsRef = useRef(facts);
   factsRef.current = facts;
@@ -181,10 +194,11 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
         const uid: string | undefined = data?.user?.id;
         if (!uid || cancelled) return;
         setUserId(uid);
-        const { data: row } = await supabase.from('novaia_profiles').select('memory_consent, style').eq('user_id', uid).maybeSingle();
+        const { data: row } = await supabase.from('novaia_profiles').select('memory_consent, style, sync_conversations').eq('user_id', uid).maybeSingle();
         if (cancelled) return;
         if (row) {
           setConsent(row.memory_consent === true);
+          setSyncOn(row.sync_conversations === true);
           if (row.memory_consent === true) setStyle(cleanStyle(row.style));
         }
       } catch {
@@ -227,6 +241,25 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     }
   };
 
+  const changeSync = async (v: boolean) => {
+    if (!supabase || !userId) return;
+    if (!v) {
+      if (!window.confirm(pc.syncDisableConfirm)) return;
+      setSyncOn(false);
+      pushedRef.current = new Map();
+      await supabase.from('novaia_profiles').upsert({ user_id: userId, sync_conversations: false, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      await deleteAllRemote(supabase, userId);
+      return;
+    }
+    const { error } = await supabase.from('novaia_profiles').upsert({ user_id: userId, sync_conversations: true, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    if (error) {
+      setPrefsError(true);
+      return;
+    }
+    setPrefsError(false);
+    setSyncOn(true); // l'effet ci-dessous fait la première fusion
+  };
+
   const saveFact = async () => {
     const text = factSuggestion;
     setFactSuggestion(null);
@@ -262,7 +295,14 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const [attachError, setAttachError] = useState<string | null>(null);
   // image active par conversation : en mémoire seulement (jamais enregistrée), perdue au rechargement de la page
   const [imageByConv, setImageByConv] = useState<Record<string, PreparedImage>>({});
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null); // image
+  const docRef = useRef<HTMLInputElement | null>(null); // PDF
+  const camRef = useRef<HTMLInputElement | null>(null); // appareil photo
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [docsOpen, setDocsOpen] = useState(false);
+  const [viewer, setViewer] = useState<AttachedDoc | null>(null);
+  // pièces jointes par conversation puis par message : en mémoire seulement
+  const [docsByConv, setDocsByConv] = useState<Record<string, Record<number, AttachedDoc>>>({});
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -280,6 +320,49 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const convsRef = useRef<Conversation[]>([]);
 
   convsRef.current = convs;
+  const loadingIdRef = useRef<string | null>(null);
+  loadingIdRef.current = loadingId;
+
+  // --- synchronisation (facultative) : fusion au démarrage, au retour sur la page, puis envoi des changements
+  const syncPull = useCallback(async () => {
+    if (!supabase || !userId) return;
+    const remote = await fetchRemote(supabase, userId);
+    if (!remote || !mounted.current) return;
+    const { list, push, changed } = mergeConversations(convsRef.current, remote, loadingIdRef.current);
+    for (const r of remote) if (!r.deleted) pushedRef.current.set(r.id, Math.max(pushedRef.current.get(r.id) ?? 0, r.updated_at));
+    if (changed) setConvs(list);
+    for (const c of push) if (await pushConversation(supabase, userId, c)) pushedRef.current.set(c.id, c.updatedAt);
+  }, [supabase, userId]);
+
+  useEffect(() => {
+    if (!ready || !syncOn || !supabase || !userId) return;
+    void syncPull();
+    if (supabase && userId) void purgeOldDeletions(supabase, userId);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void syncPull();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [ready, syncOn, supabase, userId, syncPull]);
+
+  useEffect(() => {
+    if (!ready || !syncOn || !supabase || !userId) return;
+    const t = setTimeout(() => {
+      for (const c of convs) {
+        if (c.id === loadingId || c.messages.length === 0) continue;
+        if ((pushedRef.current.get(c.id) ?? 0) >= c.updatedAt) continue;
+        pushedRef.current.set(c.id, c.updatedAt);
+        void pushConversation(supabase, userId, c).then((ok) => {
+          if (!ok) pushedRef.current.delete(c.id);
+        });
+      }
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [convs, loadingId, ready, syncOn, supabase, userId]);
 
   // ----- cycle de vie : chargement / sauvegarde de l'historique (navigateur uniquement)
 
@@ -307,10 +390,32 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       if (e.key !== 'Escape') return;
       setDrawer(false);
       setRenamingId(null);
+      setMenuOpen(false);
+      setDocsOpen(false);
+      setViewer(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // pièces jointes gardées sur l'appareil : on les recharge à l'ouverture d'une conversation
+  useEffect(() => {
+    if (!activeId) return;
+    const id = activeId;
+    let cancelled = false;
+    void loadConvDocs(id).then((stored) => {
+      if (cancelled) return;
+      const ids = Object.keys(stored).map(Number);
+      if (ids.length === 0) return;
+      setDocsByConv((prev) => ({ ...prev, [id]: { ...stored, ...(prev[id] ?? {}) } }));
+      // la dernière image redevient « active » : on peut continuer d'en parler après un rechargement
+      const last = stored[Math.max(...ids)];
+      setImageByConv((prev) => (prev[id] ? prev : { ...prev, [id]: { dataUrl: last.dataUrl, thumb: last.thumb } }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId]);
 
   const ordered = useMemo(() => [...convs].sort((a, b) => b.updatedAt - a.updatedAt), [convs]);
   const active = useMemo(() => convs.find((c) => c.id === activeId) ?? null, [convs, activeId]);
@@ -539,10 +644,12 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
       let convId = activeId;
       let history: StoredMessage[];
+      let msgId = 1;
 
       if (!convId || !convs.some((c) => c.id === convId)) {
         const c = newConversation(titleFrom(content));
         const userMessage: StoredMessage = { id: 1, role: 'user', content, ...(image ? { image: true } : {}) };
+        msgId = 1;
         c.messages = [userMessage];
         convId = c.id;
         history = c.messages;
@@ -551,6 +658,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       } else {
         const cur = convs.find((c) => c.id === convId) as Conversation;
         const userMessage: StoredMessage = { id: nextMessageId(cur), role: 'user', content, ...(image ? { image: true } : {}) };
+        msgId = userMessage.id;
         history = [...cur.messages, userMessage];
         const id = convId;
         setConvs((prev) =>
@@ -566,16 +674,56 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
         const id = convId;
         setImageByConv((prev) => ({ ...prev, [id]: attachment }));
       }
+      const eff = attachment ?? known;
+      if (eff) {
+        const id = convId;
+        const label = attachment && pdf ? `${pdf.doc.name} · ${pc.pdfPage} ${pdf.page}` : attachment ? copy.imageAttached : '';
+        const entry: AttachedDoc = { thumb: eff.thumb, dataUrl: eff.dataUrl, label, fresh: !!attachment };
+        setDocsByConv((prev) => ({ ...prev, [id]: { ...(prev[id] ?? {}), [msgId]: entry } }));
+        void putDoc(id, msgId, entry);
+      }
       setAttachment(null);
+      closePdf();
       setAttachError(null);
       void ask(convId, history, image);
     },
-    [activeId, convs, loading, ask, attachment, imageByConv, copy.imageDefaultQuestion, consent, userId]
+    [activeId, convs, loading, ask, attachment, imageByConv, copy.imageDefaultQuestion, copy.imageAttached, consent, userId, pdf, pc.pdfPage]
   );
+
+  const closePdf = () => {
+    setPdf((cur) => {
+      cur?.doc.destroy();
+      return null;
+    });
+  };
+
+  const goPdfPage = async (doc: OpenedPdf, page: number) => {
+    setAttachError(null);
+    setPdf({ doc, page, busy: true });
+    try {
+      setAttachment(await prepareImage(await doc.renderPage(page)));
+      setPdf({ doc, page, busy: false });
+    } catch {
+      setPdf({ doc, page, busy: false });
+      setAttachError(pc.pdfError);
+    }
+  };
 
   const attachFile = async (file: File | undefined) => {
     if (!file) return;
     setAttachError(null);
+    if (isPdf(file)) {
+      closePdf();
+      try {
+        const doc = await openPdf(file);
+        await goPdfPage(doc, 1);
+      } catch (e) {
+        setAttachment(null);
+        setAttachError(e instanceof Error && e.message === 'size' ? copy.imageTooBig : pc.pdfError);
+      }
+      return;
+    }
+    closePdf();
     try {
       setAttachment(await prepareImage(file));
     } catch (e) {
@@ -638,6 +786,13 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     if (loadingId === c.id) return;
     if (!window.confirm(copy.removeConfirm)) return;
     setConvs((prev) => prev.filter((x) => x.id !== c.id));
+    void deleteConvDocs(c.id);
+    if (syncOn && supabase && userId) void pushDeletion(supabase, userId, c.id);
+    setDocsByConv((prev) => {
+      const rest = { ...prev };
+      delete rest[c.id];
+      return rest;
+    });
     if (activeId === c.id) setActiveId(null);
   };
 
@@ -646,6 +801,10 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     if (!window.confirm(copy.clearAllConfirm)) return;
     setConvs([]);
     setActiveId(null);
+    setDocsByConv({});
+    setImageByConv({});
+    void clearAllDocs();
+    if (syncOn && supabase && userId) for (const c of convs) void pushDeletion(supabase, userId, c.id);
     clearStored();
   };
 
@@ -824,6 +983,21 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
               {active ? copy.assistantName : copy.previewBadge}
             </p>
           </div>
+          {active && (
+            <button
+              type="button"
+              onClick={() => setDocsOpen(true)}
+              aria-label={pc.docsButton}
+              title={pc.docsButton}
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[0.78rem] text-muted transition-colors hover:border-ink/40 hover:text-ink"
+            >
+              {Icon.clip}
+              <span className="hidden sm:inline">{pc.docsButton}</span>
+              {Object.values(docsByConv[active.id] ?? {}).filter((d) => d.fresh).length > 0 && (
+                <span className="font-mono text-[0.68rem]">{Object.values(docsByConv[active.id] ?? {}).filter((d) => d.fresh).length}</span>
+              )}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setPrefsOpen(true)}
@@ -935,12 +1109,26 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                         : 'w-full max-w-full text-ink'
                     }`}
                   >
-                    {m.image && (
-                      <span className="mb-1 flex items-center gap-1 text-[0.72rem] opacity-70">
-                        {Icon.image}
-                        {copy.imageAttached}
-                      </span>
-                    )}
+                    {m.image && (() => {
+                      const d = activeId ? docsByConv[activeId]?.[m.id] : undefined;
+                      return d ? (
+                        <button
+                          type="button"
+                          onClick={() => setViewer(d)}
+                          aria-label={pc.docsButton}
+                          title={d.label || pc.docsButton}
+                          className="mb-1.5 block overflow-hidden rounded-xl border border-paper/20"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={d.dataUrl} alt="" className="max-h-56 w-auto max-w-full object-contain" />
+                        </button>
+                      ) : (
+                        <span className="mb-1 flex items-center gap-1 text-[0.72rem] opacity-70">
+                          {Icon.image}
+                          {copy.imageAttached}
+                        </span>
+                      );
+                    })()}
                     {m.role === 'assistant' && !m.error ? (
                       <FormattedReply text={m.content} copyLabel={copy.copy} copiedLabel={copy.copied} />
                     ) : (
@@ -1064,11 +1252,44 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={activeImage.thumb} alt="" className="h-12 w-12 rounded-lg border border-line object-cover" />
-                    <span>{attachment ? copy.imageAttached : copy.imageActive}</span>
+                    {attachment && pdf ? (
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          aria-label={pc.pdfPrev}
+                          title={pc.pdfPrev}
+                          disabled={pdf.busy || pdf.page <= 1}
+                          onClick={() => void goPdfPage(pdf.doc, pdf.page - 1)}
+                          className="h-6 w-6 rounded-full border border-line transition-colors hover:bg-mist hover:text-ink disabled:opacity-30"
+                        >
+                          ‹
+                        </button>
+                        <span className="whitespace-nowrap">
+                          {pc.pdfPage} {pdf.page} {pc.pdfOf} {pdf.doc.pages}
+                          {pdf.busy ? '…' : ''}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={pc.pdfNext}
+                          title={pc.pdfNext}
+                          disabled={pdf.busy || pdf.page >= pdf.doc.pages}
+                          onClick={() => void goPdfPage(pdf.doc, pdf.page + 1)}
+                          className="h-6 w-6 rounded-full border border-line transition-colors hover:bg-mist hover:text-ink disabled:opacity-30"
+                        >
+                          ›
+                        </button>
+                        <span className="hidden max-w-[10rem] truncate sm:inline" title={pdf.doc.name}>
+                          · {pdf.doc.name}
+                        </span>
+                      </span>
+                    ) : (
+                      <span>{attachment ? copy.imageAttached : copy.imageActive}</span>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
                         setAttachment(null);
+                        closePdf();
                         if (activeId) {
                           const id = activeId;
                           setImageByConv((prev) => {
@@ -1099,16 +1320,66 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   e.target.value = '';
                 }}
               />
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={loading}
-                aria-label={copy.attach}
-                title={`${copy.attach} — ${copy.attachHint}`}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-mist hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
-              >
-                {Icon.clip}
-              </button>
+              <input
+                ref={docRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                className="hidden"
+                onChange={(e) => {
+                  void attachFile(e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+              />
+              <input
+                ref={camRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  void attachFile(e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+              />
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  disabled={loading}
+                  aria-label={copy.attach}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  title={`${copy.attach} — ${copy.attachHint}`}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-mist hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  {Icon.clip}
+                </button>
+                {menuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} aria-hidden />
+                    <div role="menu" className="absolute bottom-11 left-0 z-40 w-52 overflow-hidden rounded-2xl border border-line bg-paper py-1.5 shadow-lg">
+                      {[
+                        { label: pc.menuImage, ref: fileRef },
+                        { label: pc.menuDoc, ref: docRef },
+                        { label: pc.menuCamera, ref: camRef },
+                      ].map((o) => (
+                        <button
+                          key={o.label}
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            o.ref.current?.click();
+                          }}
+                          className="block w-full px-4 py-2 text-left text-[0.88rem] text-ink transition-colors hover:bg-mist"
+                        >
+                          {o.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
               <label htmlFor="novaia-input" className="sr-only">
                 {copy.inputLabel}
               </label>
@@ -1168,6 +1439,51 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           </div>
         </form>
       </section>
+      {docsOpen && active && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-6" onClick={() => setDocsOpen(false)}>
+          <div
+            role="dialog"
+            aria-label={pc.docsTitle}
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-line bg-paper p-5 shadow-xl sm:rounded-3xl"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-[1rem] font-semibold text-ink">{pc.docsTitle}</h2>
+              <button type="button" onClick={() => setDocsOpen(false)} className="rounded-full border border-line px-3 py-1 text-[0.78rem] text-muted hover:text-ink">
+                {pc.close}
+              </button>
+            </div>
+            {(() => {
+              const list = Object.values(docsByConv[active.id] ?? {}).filter((d) => d.fresh);
+              return list.length === 0 ? (
+                <p className="text-[0.85rem] text-muted">{pc.docsEmpty}</p>
+              ) : (
+                <ul className="grid grid-cols-3 gap-3">
+                  {list.map((d, i) => (
+                    <li key={i}>
+                      <button type="button" onClick={() => setViewer(d)} className="block w-full text-left" title={d.label}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={d.thumb} alt="" className="aspect-square w-full rounded-xl border border-line object-cover" />
+                        <span className="mt-1 block truncate text-[0.7rem] text-muted">{d.label}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
+            <p className="mt-4 text-[0.72rem] text-muted">{pc.docsNote}</p>
+          </div>
+        </div>
+      )}
+      {viewer && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/80 p-4" onClick={() => setViewer(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={viewer.dataUrl} alt="" className="max-h-full max-w-full rounded-xl bg-white object-contain" />
+          <button type="button" onClick={() => setViewer(null)} aria-label={pc.close} className="absolute right-4 top-4 rounded-full bg-paper px-3 py-1 text-[0.8rem] text-ink">
+            {pc.close}
+          </button>
+        </div>
+      )}
       {prefsOpen && (
         <NovaiaPrefs
           c={pc}
@@ -1178,6 +1494,8 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           consent={consent}
           onConsent={changeConsent}
           onForget={forgetAll}
+          syncOn={syncOn}
+          onSync={(v) => void changeSync(v)}
           facts={facts}
           onDeleteFact={(id) => void deleteFact(id)}
           onClose={() => setPrefsOpen(false)}

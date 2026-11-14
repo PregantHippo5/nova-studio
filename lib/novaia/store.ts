@@ -98,6 +98,10 @@ function sanitizeMessage(x: unknown): StoredMessage | null {
   };
 }
 
+export function cleanConversation(x: unknown): Conversation | null {
+  return sanitizeConversation(x);
+}
+
 function sanitizeConversation(x: unknown): Conversation | null {
   if (typeof x !== 'object' || x === null) return null;
   const { id, title, createdAt, updatedAt, messages, renamed, summary, summaryUpTo } = x as Record<string, unknown>;

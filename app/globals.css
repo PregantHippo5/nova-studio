@@ -133,7 +133,6 @@ html.nova-seen .nova-preloader {
 /* Curseur personnalisé : actif seulement avec une vraie souris. */
 html.has-cursor,
 html.has-cursor * {
-  cursor: none !important;
 }
 
 html.has-cursor input,

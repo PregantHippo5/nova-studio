@@ -37,6 +37,25 @@ export interface PrefsCopy {
   abStop: string;
   abNoted: string;
   compressed: string;
+  pdfPage: string;
+  pdfOf: string;
+  pdfPrev: string;
+  pdfNext: string;
+  pdfError: string;
+  pdfRemove: string;
+  menuImage: string;
+  menuDoc: string;
+  menuCamera: string;
+  docsButton: string;
+  docsTitle: string;
+  docsEmpty: string;
+  docsNote: string;
+  syncTitle: string;
+  syncOff: string;
+  syncOn: string;
+  syncEnable: string;
+  syncDisable: string;
+  syncDisableConfirm: string;
 }
 
 const fr: PrefsCopy = {
@@ -82,6 +101,25 @@ const fr: PrefsCopy = {
   abStop: 'Ne plus proposer',
   abNoted: 'Noté, je m’en souviendrai.',
   compressed: 'Début de la discussion résumé pour pouvoir continuer',
+  pdfPage: 'Page',
+  pdfOf: 'sur',
+  pdfPrev: 'Page précédente',
+  pdfNext: 'Page suivante',
+  pdfError: 'Impossible de lire ce PDF (trop gros ou protégé ?).',
+  pdfRemove: 'Retirer le PDF',
+  menuImage: 'Image',
+  menuDoc: 'Document (PDF)',
+  menuCamera: 'Appareil photo',
+  docsButton: 'Pièces jointes',
+  docsTitle: 'Pièces jointes de cette conversation',
+  docsEmpty: 'Aucune pièce jointe pour l’instant.',
+  docsNote: 'Gardées sur cet appareil uniquement, comme tes conversations : jamais envoyées sur un compte, supprimées avec la conversation.',
+  syncTitle: 'Discussions sur tous tes appareils',
+  syncOff: 'Tes discussions restent sur cet appareil. Active la synchronisation pour les retrouver sur ton téléphone, ton ordinateur, etc. avec ton compte.',
+  syncOn: 'Synchronisation active : tes discussions (texte uniquement, pas les images) sont copiées sur ton compte et retrouvées sur tes autres appareils.',
+  syncEnable: 'Activer la synchronisation',
+  syncDisable: 'Désactiver et effacer les copies du compte',
+  syncDisableConfirm: 'Désactiver la synchronisation et supprimer les copies de tes discussions stockées sur ton compte ? Elles restent sur cet appareil.',
 };
 
 const en: PrefsCopy = {
@@ -127,6 +165,25 @@ const en: PrefsCopy = {
   abStop: 'Stop offering this',
   abNoted: 'Noted, I’ll remember that.',
   compressed: 'Start of the conversation summarized so we can keep going',
+  pdfPage: 'Page',
+  pdfOf: 'of',
+  pdfPrev: 'Previous page',
+  pdfNext: 'Next page',
+  pdfError: 'Could not read this PDF (too big or protected?).',
+  pdfRemove: 'Remove PDF',
+  menuImage: 'Image',
+  menuDoc: 'Document (PDF)',
+  menuCamera: 'Camera',
+  docsButton: 'Attachments',
+  docsTitle: 'Attachments in this conversation',
+  docsEmpty: 'No attachments yet.',
+  docsNote: 'Kept on this device only, like your conversations: never sent to an account, deleted with the conversation.',
+  syncTitle: 'Conversations on all your devices',
+  syncOff: 'Your conversations stay on this device. Turn on sync to find them on your phone, computer, etc. with your account.',
+  syncOn: 'Sync is on: your conversations (text only, no images) are copied to your account and found on your other devices.',
+  syncEnable: 'Turn on sync',
+  syncDisable: 'Turn off and delete the copies on the account',
+  syncDisableConfirm: 'Turn off sync and delete the copies of your conversations stored on your account? They stay on this device.',
 };
 
 export function prefsCopy(locale: Lang | string): PrefsCopy {

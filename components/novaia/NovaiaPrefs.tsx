@@ -12,6 +12,8 @@ interface Props {
   consent: boolean | null;
   onConsent: (v: boolean) => void;
   onForget: () => void;
+  syncOn: boolean;
+  onSync: (v: boolean) => void;
   facts: { id: number; content: string }[];
   onDeleteFact: (id: number) => void;
   onClose: () => void;
@@ -19,7 +21,7 @@ interface Props {
 }
 
 /** Panneau de style : six réglages mixables, préréglages, consentement et « tout oublier ». */
-export default function NovaiaPrefs({ c, locale, style, onStyle, loggedIn, consent, onConsent, onForget, facts, onDeleteFact, onClose, error }: Props) {
+export default function NovaiaPrefs({ c, locale, style, onStyle, loggedIn, consent, onConsent, onForget, syncOn, onSync, facts, onDeleteFact, onClose, error }: Props) {
   const toggle = (k: StyleKey, v: string) => {
     const next: Style = { ...style };
     if (next[k] === v) delete next[k];
@@ -139,6 +141,24 @@ export default function NovaiaPrefs({ c, locale, style, onStyle, loggedIn, conse
           )}
           {error && <p className="mt-2 text-[0.75rem] text-red-700">{c.saveError}</p>}
         </div>
+
+        {loggedIn && (
+          <div className="mt-5 rounded-2xl border border-line p-4 text-[0.82rem] leading-relaxed text-ink/85">
+            <p className="text-[0.7rem] font-medium uppercase tracking-[0.08em] text-muted">{c.syncTitle}</p>
+            <p className="mt-2">{syncOn ? c.syncOn : c.syncOff}</p>
+            <button
+              type="button"
+              onClick={() => onSync(!syncOn)}
+              className={
+                syncOn
+                  ? 'mt-2 text-[0.78rem] text-muted underline-offset-2 hover:text-red-700 hover:underline'
+                  : 'mt-3 rounded-full bg-ink px-4 py-1.5 text-[0.8rem] font-medium text-paper hover:opacity-85'
+              }
+            >
+              {syncOn ? c.syncDisable : c.syncEnable}
+            </button>
+          </div>
+        )}
 
         {loggedIn && consent === true && (
           <div className="mt-5">
