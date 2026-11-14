@@ -10,7 +10,7 @@
 //    (Supabase / Upstash) avant de brancher un modèle payant.
 
 import { generateReply, streamReply, type ChatMessage } from '@/lib/novaia/provider';
-import { cleanStyle } from '@/lib/novaia/style';
+import { cleanPerso } from '@/lib/novaia/style';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Trop de requêtes. Réessayez dans un instant.' }, { status: 429 });
   }
 
-  let body: { locale?: unknown; messages?: unknown; stream?: unknown; style?: unknown };
+  let body: { locale?: unknown; messages?: unknown; stream?: unknown; style?: unknown; memoire?: unknown; resume?: unknown; ab?: unknown };
 
   try {
     const raw = await request.text();
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
           }
         };
         try {
-          const result = await streamReply(messages, locale, (v) => write({ t: 'etat', v }), cleanStyle(body.style));
+          const result = await streamReply(messages, locale, (v) => write({ t: 'etat', v }), cleanPerso({ style: body.style, memoire: body.memoire, resume: body.resume, ab: body.ab }));
           write({ t: 'fin', ...result });
         } catch {
           write({ t: 'err' });

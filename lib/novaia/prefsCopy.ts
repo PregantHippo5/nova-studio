@@ -24,6 +24,19 @@ export interface PrefsCopy {
   forget: string;
   forgetConfirm: string;
   saveError: string;
+  factAsk: string;
+  factYes: string;
+  factNo: string;
+  memoryTitle: string;
+  memoryEmpty: string;
+  memoryDelete: string;
+  abTitle: string;
+  abA: string;
+  abB: string;
+  abPick: string;
+  abStop: string;
+  abNoted: string;
+  compressed: string;
 }
 
 const fr: PrefsCopy = {
@@ -56,6 +69,19 @@ const fr: PrefsCopy = {
   forget: 'Tout oublier',
   forgetConfirm: 'Effacer tes préférences et ta mémoire NovaIA de ton compte ?',
   saveError: 'Enregistrement impossible pour le moment.',
+  factAsk: 'Retenir pour la suite :',
+  factYes: 'Retenir',
+  factNo: 'Non',
+  memoryTitle: 'Ce que NovaIA retient de toi',
+  memoryEmpty: 'Rien pour l’instant. NovaIA te proposera de retenir une info quand tu parles de toi.',
+  memoryDelete: 'Oublier',
+  abTitle: 'Deux façons de répondre : laquelle te va le mieux ?',
+  abA: 'Version A',
+  abB: 'Version B',
+  abPick: 'Je préfère celle-ci',
+  abStop: 'Ne plus proposer',
+  abNoted: 'Noté, je m’en souviendrai.',
+  compressed: 'Début de la discussion résumé pour pouvoir continuer',
 };
 
 const en: PrefsCopy = {
@@ -88,6 +114,19 @@ const en: PrefsCopy = {
   forget: 'Forget everything',
   forgetConfirm: 'Erase your preferences and NovaIA memory from your account?',
   saveError: 'Could not save right now.',
+  factAsk: 'Remember for later:',
+  factYes: 'Remember',
+  factNo: 'No',
+  memoryTitle: 'What NovaIA remembers about you',
+  memoryEmpty: 'Nothing yet. NovaIA will offer to remember something when you talk about yourself.',
+  memoryDelete: 'Forget',
+  abTitle: 'Two ways to answer: which suits you better?',
+  abA: 'Version A',
+  abB: 'Version B',
+  abPick: 'I prefer this one',
+  abStop: 'Stop offering this',
+  abNoted: 'Noted, I’ll remember that.',
+  compressed: 'Start of the conversation summarized so we can keep going',
 };
 
 export function prefsCopy(locale: Lang | string): PrefsCopy {

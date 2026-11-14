@@ -12,12 +12,14 @@ interface Props {
   consent: boolean | null;
   onConsent: (v: boolean) => void;
   onForget: () => void;
+  facts: { id: number; content: string }[];
+  onDeleteFact: (id: number) => void;
   onClose: () => void;
   error: boolean;
 }
 
 /** Panneau de style : six réglages mixables, préréglages, consentement et « tout oublier ». */
-export default function NovaiaPrefs({ c, locale, style, onStyle, loggedIn, consent, onConsent, onForget, onClose, error }: Props) {
+export default function NovaiaPrefs({ c, locale, style, onStyle, loggedIn, consent, onConsent, onForget, facts, onDeleteFact, onClose, error }: Props) {
   const toggle = (k: StyleKey, v: string) => {
     const next: Style = { ...style };
     if (next[k] === v) delete next[k];
@@ -137,6 +139,26 @@ export default function NovaiaPrefs({ c, locale, style, onStyle, loggedIn, conse
           )}
           {error && <p className="mt-2 text-[0.75rem] text-red-700">{c.saveError}</p>}
         </div>
+
+        {loggedIn && consent === true && (
+          <div className="mt-5">
+            <p className="text-[0.7rem] font-medium uppercase tracking-[0.08em] text-muted">{c.memoryTitle}</p>
+            {facts.length === 0 ? (
+              <p className="mt-2 text-[0.8rem] leading-relaxed text-muted">{c.memoryEmpty}</p>
+            ) : (
+              <ul className="mt-2 space-y-1.5">
+                {facts.map((f) => (
+                  <li key={f.id} className="flex items-start justify-between gap-3 rounded-xl border border-line px-3 py-2 text-[0.82rem] text-ink/85">
+                    <span className="min-w-0 break-words">{f.content}</span>
+                    <button type="button" onClick={() => onDeleteFact(f.id)} className="shrink-0 text-[0.75rem] text-muted underline-offset-2 hover:text-red-700 hover:underline">
+                      {c.memoryDelete}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </aside>
     </div>
   );

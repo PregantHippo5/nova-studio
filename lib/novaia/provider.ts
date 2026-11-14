@@ -24,10 +24,18 @@ export interface ReplySource {
   url: string;
 }
 
+/** Deuxième version d'une réponse (comparaison côte à côte) et réglages que chaque version représente. */
+export interface ReplyAlt {
+  textB: string;
+  dimsA: Dims;
+  dimsB: Dims;
+}
+
 export interface ReplyResult {
   reply: string;
   mode: ReplyMode;
   sources?: ReplySource[];
+  ab?: ReplyAlt;
 }
 
 export type ReplyState = 'recherche' | 'calcul' | 'reflexion' | 'redaction';
@@ -35,6 +43,8 @@ export type ReplyState = 'recherche' | 'calcul' | 'reflexion' | 'redaction';
 export type Lang = 'fr' | 'en';
 
 // --------------------------------------------------------------------------- vrai modèle (Space Hugging Face)
+
+import { cleanDims, persoIsEmpty, type Dims, type Perso } from '@/lib/novaia/style';
 
 const SPACE_URL = (process.env.NOVAIA_SPACE_URL ?? '').replace(/\/+$/, '');
 const HF_TOKEN = process.env.NOVAIA_HF_TOKEN ?? '';
@@ -255,7 +265,7 @@ export async function streamReply(
   messages: ChatMessage[],
   locale: Lang,
   emit: (state: ReplyState) => void,
-  style?: Record<string, string>
+  perso?: Perso
 ): Promise<ReplyResult> {
   const last = [...messages].reverse().find((m) => m.role === 'user');
   if (!SPACE_URL || !last?.content.trim()) return generateReply(messages, locale);
@@ -281,12 +291,17 @@ export async function streamReply(
         signal,
         cache: 'no-store',
       });
+    // Du plus complet au plus ancien : si le Space n'a pas encore la dernière version, on retombe sur la précédente.
     let start: Response;
-    if (style && Object.keys(style).length > 0) {
-      endpoint = 'chat_stream_style';
-      start = await post(endpoint, [payload, false, JSON.stringify(style)]);
+    if (perso && !persoIsEmpty(perso)) {
+      endpoint = 'chat_stream_perso';
+      start = await post(endpoint, [payload, false, JSON.stringify(perso)]);
+      if (!start.ok && start.status !== 429 && Object.keys(perso.style).length > 0) {
+        endpoint = 'chat_stream_style';
+        start = await post(endpoint, [payload, false, JSON.stringify(perso.style)]);
+      }
       if (!start.ok && start.status !== 429) {
-        endpoint = 'chat_stream'; // Space pas encore à jour pour le style : réponse sans style
+        endpoint = 'chat_stream';
         start = await post(endpoint, [payload, false]);
       }
     } else {
@@ -340,7 +355,20 @@ export async function streamReply(
         if (!inner) return null;
         if (typeof inner.etat === 'string' && (STATES as string[]).includes(inner.etat)) emit(inner.etat as ReplyState);
         if (typeof inner.texte === 'string' && inner.texte.trim()) {
-          return { reply: inner.texte.trim(), mode: 'live', sources: cleanReplySources(inner.sources) };
+          const ab =
+            typeof inner.ab === 'object' && inner.ab !== null && typeof (inner.ab as Record<string, unknown>).b === 'string'
+              ? ({
+                  textB: ((inner.ab as Record<string, unknown>).b as string).trim(),
+                  dimsA: cleanDims((inner.ab as Record<string, unknown>).dimsA),
+                  dimsB: cleanDims((inner.ab as Record<string, unknown>).dimsB),
+                } as ReplyAlt)
+              : undefined;
+          return {
+            reply: inner.texte.trim(),
+            mode: 'live',
+            sources: cleanReplySources(inner.sources),
+            ...(ab && ab.textB ? { ab } : {}),
+          };
         }
       } catch {
         /* ligne incomplète ou inattendue : ignorée */
@@ -389,4 +417,47 @@ function cleanReplySources(x: unknown): ReplySource[] {
     }
   }
   return out;
+}
+
+
+// --------------------------------------------------------------------------- compression d'une longue discussion
+
+/**
+ * Demande au Space un résumé court du début d'une discussion (quelques phrases). Renvoie null si ça échoue :
+ * la discussion continue alors sans résumé, rien n'est perdu.
+ */
+export async function summarizeChat(messages: ChatMessage[], previous: string): Promise<string | null> {
+  if (!SPACE_URL || messages.length === 0) return null;
+  const auth: Record<string, string> = HF_TOKEN ? { Authorization: `Bearer ${HF_TOKEN}` } : {};
+  const signal = AbortSignal.timeout(TIMEOUT_MS);
+  try {
+    const start = await fetch(`${SPACE_URL}/gradio_api/call/resume`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...auth },
+      body: JSON.stringify({
+        data: [JSON.stringify(messages.map((m) => ({ role: m.role, content: m.content.slice(0, 500) }))), previous.slice(0, 1200)],
+      }),
+      signal,
+      cache: 'no-store',
+    });
+    if (!start.ok) return null;
+    const { event_id } = (await start.json().catch(() => ({}))) as { event_id?: unknown };
+    if (typeof event_id !== 'string') return null;
+    const res = await fetch(`${SPACE_URL}/gradio_api/call/resume/${encodeURIComponent(event_id)}`, { headers: auth, signal, cache: 'no-store' });
+    if (!res.ok) return null;
+    const text = await res.text();
+    let event = '';
+    for (const line of text.split('\n')) {
+      if (line.startsWith('event:')) event = line.slice(6).trim();
+      else if (line.startsWith('data:') && event === 'complete') {
+        const arr = JSON.parse(line.slice(5).trim()) as unknown;
+        const out = Array.isArray(arr) && typeof arr[0] === 'string' ? arr[0].trim() : '';
+        return out ? out.slice(0, 1200) : null;
+      }
+    }
+    return null;
+  } catch (err) {
+    console.error(`[novaia] résumé impossible : ${err instanceof Error ? err.name : String(err)}`);
+    return null;
+  }
 }

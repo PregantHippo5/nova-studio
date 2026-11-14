@@ -13,6 +13,8 @@ export interface StoredMessage {
   image?: boolean;
   /** pages consultées pour répondre (recherche Wikipédia) */
   sources?: Source[];
+  /** comparaison en attente de choix (jamais enregistrée : après rechargement, seule la version A reste) */
+  ab?: { textB: string; dimsA: Record<string, string | null>; dimsB: Record<string, string | null> };
 }
 
 export interface Source {
@@ -46,6 +48,9 @@ export interface Conversation {
   updatedAt: number;
   messages: StoredMessage[];
   renamed?: boolean;
+  /** résumé du début de la discussion (compression) et id du dernier message qu'il couvre */
+  summary?: string;
+  summaryUpTo?: number;
 }
 
 const KEY = 'novaia:conversations:v1';
@@ -95,7 +100,7 @@ function sanitizeMessage(x: unknown): StoredMessage | null {
 
 function sanitizeConversation(x: unknown): Conversation | null {
   if (typeof x !== 'object' || x === null) return null;
-  const { id, title, createdAt, updatedAt, messages, renamed } = x as Record<string, unknown>;
+  const { id, title, createdAt, updatedAt, messages, renamed, summary, summaryUpTo } = x as Record<string, unknown>;
   if (typeof id !== 'string' || typeof title !== 'string' || !Array.isArray(messages)) return null;
   const msgs = messages.map(sanitizeMessage).filter((m): m is StoredMessage => m !== null).slice(-MAX_MESSAGES);
   const created = typeof createdAt === 'number' ? createdAt : Date.now();
@@ -106,6 +111,9 @@ function sanitizeConversation(x: unknown): Conversation | null {
     updatedAt: typeof updatedAt === 'number' ? updatedAt : created,
     messages: msgs,
     ...(renamed === true ? { renamed: true } : {}),
+    ...(typeof summary === 'string' && summary.trim() && typeof summaryUpTo === 'number'
+      ? { summary: summary.trim().slice(0, 1200), summaryUpTo }
+      : {}),
   };
 }
 

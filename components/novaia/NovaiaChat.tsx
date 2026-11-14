@@ -10,7 +10,8 @@ import { prepareImage, type PreparedImage } from '@/lib/novaia/image';
 import type { ReplyState } from '@/lib/novaia/provider';
 import NovaiaPrefs from '@/components/novaia/NovaiaPrefs';
 import { prefsCopy } from '@/lib/novaia/prefsCopy';
-import { cleanStyle, type Style } from '@/lib/novaia/style';
+import { applyDims, cleanDims, cleanStyle, type Style } from '@/lib/novaia/style';
+import { detectFact } from '@/lib/novaia/facts';
 import { createClient } from '@/lib/supabase/client';
 import {
   MAX_CONVERSATIONS,
@@ -129,7 +130,6 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const [prefsError, setPrefsError] = useState(false);
   const styleRef = useRef<Style>({});
   styleRef.current = style;
-
   const supabase = useMemo(() => {
     try {
       return createClient();
@@ -137,6 +137,40 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       return null; // pas de connexion possible : NovaIA marche quand même, sans compte
     }
   }, []);
+
+  const [facts, setFacts] = useState<{ id: number; content: string }[]>([]);
+  const factsRef = useRef(facts);
+  factsRef.current = facts;
+  const [factSuggestion, setFactSuggestion] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const compressingRef = useRef(false);
+  const compressFailRef = useRef(-1);
+
+  useEffect(() => {
+    if (!notice) return;
+    const t = window.setTimeout(() => setNotice(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [notice]);
+
+  // petits faits retenus (seulement si la personne a accepté la mémoire)
+  useEffect(() => {
+    if (!supabase || !userId || consent !== true) {
+      setFacts([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.from('novaia_memories').select('id, content').eq('user_id', userId).order('created_at', { ascending: false }).limit(100);
+        if (!cancelled && Array.isArray(data)) setFacts(data.filter((r: { id: unknown; content: unknown }) => typeof r.id === 'number' && typeof r.content === 'string'));
+      } catch {
+        /* sans mémoire, NovaIA marche quand même */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, userId, consent]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -181,8 +215,35 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   };
 
   const changeConsent = (v: boolean) => {
+    const was = consent;
     setConsent(v);
     if (userId) void saveProfile(styleRef.current, v);
+    if (!v) {
+      setFactSuggestion(null);
+      if (was === true && supabase && userId) {
+        setFacts([]);
+        void supabase.from('novaia_memories').delete().eq('user_id', userId); // refuser = ne rien garder
+      }
+    }
+  };
+
+  const saveFact = async () => {
+    const text = factSuggestion;
+    setFactSuggestion(null);
+    if (!text || !supabase || !userId || consent !== true) return;
+    const { data, error } = await supabase.from('novaia_memories').insert({ user_id: userId, content: text.slice(0, 300), kind: 'fait' }).select('id, content').single();
+    if (error || !data) {
+      setPrefsError(true);
+      return;
+    }
+    setFacts((prev) => [data, ...prev]);
+    setNotice(pc.abNoted);
+  };
+
+  const deleteFact = async (id: number) => {
+    if (!supabase || !userId) return;
+    setFacts((prev) => prev.filter((f) => f.id !== id));
+    await supabase.from('novaia_memories').delete().eq('id', id).eq('user_id', userId);
   };
 
   const forgetAll = async () => {
@@ -192,6 +253,8 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     setPrefsError(!!(a.error || b.error));
     setStyle({});
     setConsent(false);
+    setFacts([]);
+    setFactSuggestion(null);
   };
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -270,6 +333,42 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
   }, [input]);
 
+  // ----- comparaisons côte à côte : 3 au maximum par personne, jamais deux réponses de suite
+  const readAb = (): { done: number; lastAt: number } => {
+    try {
+      const v = JSON.parse(window.localStorage.getItem('novaia:ab:v1') ?? '{}') as { done?: unknown; lastAt?: unknown };
+      return { done: typeof v.done === 'number' ? v.done : 0, lastAt: typeof v.lastAt === 'number' ? v.lastAt : 0 };
+    } catch {
+      return { done: 0, lastAt: 0 };
+    }
+  };
+  const writeAb = (v: { done: number; lastAt: number }) => {
+    try {
+      window.localStorage.setItem('novaia:ab:v1', JSON.stringify(v));
+    } catch {
+      /* stockage bloqué : tant pis, la comparaison pourra revenir */
+    }
+  };
+
+  const resolveAb = (convId: string, msgId: number, pick: 'a' | 'b' | null) => {
+    const conv = convsRef.current.find((c) => c.id === convId);
+    const m = conv?.messages.find((x) => x.id === msgId);
+    if (!conv || !m?.ab) return;
+    const content = pick === 'b' ? m.ab.textB : m.content;
+    const dims = pick === 'a' ? m.ab.dimsA : pick === 'b' ? m.ab.dimsB : null;
+    setConvs((prev) =>
+      prev.map((c) =>
+        c.id !== convId
+          ? c
+          : { ...c, messages: c.messages.map((x) => (x.id === msgId ? { id: x.id, role: x.role, content, ...(x.sources ? { sources: x.sources } : {}) } : x)) }
+      )
+    );
+    if (dims) {
+      changeStyle(applyDims(styleRef.current, cleanDims(dims)));
+      setNotice(pc.abNoted);
+    }
+  };
+
   // ----- échange avec le serveur
 
   const ask = useCallback(
@@ -279,7 +378,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       setLoadingId(convId);
       setSteps([]);
 
-      const push = (reply: string, error = false, sources: Source[] = []) => {
+      const push = (reply: string, error = false, sources: Source[] = [], ab?: StoredMessage['ab']) => {
         if (!mounted.current) return;
         setConvs((prev) =>
           prev.map((c) =>
@@ -290,15 +389,25 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   updatedAt: Date.now(),
                   messages: [
                     ...c.messages,
-                    { id: nextMessageId(c), role: 'assistant' as const, content: reply, error, ...(sources.length ? { sources } : {}) },
+                    { id: nextMessageId(c), role: 'assistant' as const, content: reply, error, ...(sources.length ? { sources } : {}), ...(ab ? { ab } : {}) },
                   ].slice(-MAX_MESSAGES),
                 }
           )
         );
       };
 
+      // le début d'une longue discussion est remplacé par son résumé (voir plus bas) : on n'envoie que la suite
+      const conv = convsRef.current.find((c) => c.id === convId);
+      const upTo = conv?.summaryUpTo;
+      const abInfo = readAb();
+      const assistantCount = history.filter((m) => m.role === 'assistant').length;
+      const abIndex =
+        !image && abInfo.done < 3 && assistantCount >= 3 && assistantCount - abInfo.lastAt >= 3 && Object.keys(styleRef.current).length < 5
+          ? abInfo.done
+          : null;
+
       const payload = history
-        .filter((m) => !m.error)
+        .filter((m) => !m.error && (upTo === undefined || m.id > upTo))
         .slice(-HISTORY_SENT)
         .map((m) => ({ role: m.role, content: m.content.slice(0, MAX_SENT_CONTENT) }));
 
@@ -314,7 +423,15 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           : await fetch('/api/novaia/chat', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ locale, messages: payload, stream: true, style: styleRef.current }),
+              body: JSON.stringify({
+                locale,
+                messages: payload,
+                stream: true,
+                style: styleRef.current,
+                memoire: factsRef.current.slice(0, 10).map((f) => f.content),
+                resume: conv?.summary ?? '',
+                ab: abIndex,
+              }),
               signal: controller.signal,
             });
 
@@ -328,7 +445,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
           const handle = (line: string) => {
             if (!line.trim()) return;
-            let ev: { t?: unknown; v?: unknown; reply?: unknown; sources?: unknown; mode?: unknown };
+            let ev: { t?: unknown; v?: unknown; reply?: unknown; sources?: unknown; mode?: unknown; ab?: unknown };
             try {
               ev = JSON.parse(line);
             } catch {
@@ -339,7 +456,13 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
               if (mounted.current) setSteps((prev) => (prev.includes(v) ? prev : [...prev, v]));
             } else if (ev.t === 'fin' && typeof ev.reply === 'string') {
               answered = true;
-              push(ev.reply, false, cleanSources(ev.sources));
+              const alt = ev.ab as { textB?: unknown; dimsA?: unknown; dimsB?: unknown } | undefined;
+              const ab =
+                alt && typeof alt.textB === 'string' && alt.textB.trim()
+                  ? { textB: alt.textB.trim(), dimsA: cleanDims(alt.dimsA), dimsB: cleanDims(alt.dimsB) }
+                  : undefined;
+              if (ab) writeAb({ done: abInfo.done + 1, lastAt: assistantCount + 1 });
+              push(ev.reply, false, cleanSources(ev.sources), ab);
             } else if (ev.t === 'err') {
               answered = true;
               push(copy.error, true);
@@ -377,6 +500,36 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     [locale, copy.error, copy.rateLimited, copy.imageTooBig]
   );
 
+  // ----- compression : quand une discussion devient longue, son début est résumé en quelques phrases (la page garde tout)
+  useEffect(() => {
+    if (loadingId !== null || !active || compressingRef.current) return;
+    const open = active.messages.filter((m) => !m.error && (active.summaryUpTo === undefined || m.id > active.summaryUpTo));
+    if (open.length < 14 || open.length < compressFailRef.current + 4) return;
+    const part = open.slice(0, -6);
+    const convId = active.id;
+    const last = part[part.length - 1].id;
+    compressingRef.current = true;
+    fetch('/api/novaia/summarize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: part.slice(-30).map((m) => ({ role: m.role, content: m.content.slice(0, 1000) })), previous: active.summary ?? '' }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { summary?: unknown } | null) => {
+        if (d && typeof d.summary === 'string' && d.summary.trim()) {
+          setConvs((prev) => prev.map((c) => (c.id === convId ? { ...c, summary: (d.summary as string).trim(), summaryUpTo: last } : c)));
+        } else {
+          compressFailRef.current = open.length;
+        }
+      })
+      .catch(() => {
+        compressFailRef.current = open.length;
+      })
+      .finally(() => {
+        compressingRef.current = false;
+      });
+  }, [active, loadingId]);
+
   const send = useCallback(
     (text: string) => {
       const known = activeId ? imageByConv[activeId] : undefined;
@@ -408,6 +561,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       }
 
       setInput('');
+      setFactSuggestion(consent === true && userId ? detectFact(content, factsRef.current.map((f) => f.content)) : null);
       if (attachment) {
         const id = convId;
         setImageByConv((prev) => ({ ...prev, [id]: attachment }));
@@ -416,7 +570,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       setAttachError(null);
       void ask(convId, history, image);
     },
-    [activeId, convs, loading, ask, attachment, imageByConv, copy.imageDefaultQuestion]
+    [activeId, convs, loading, ask, attachment, imageByConv, copy.imageDefaultQuestion, consent, userId]
   );
 
   const attachFile = async (file: File | undefined) => {
@@ -732,6 +886,46 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
               const isLast = idx === messages.length - 1;
               return (
                 <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
+                  {active?.summaryUpTo !== undefined && idx > 0 && messages[idx - 1].id === active.summaryUpTo && (
+                    <div className="mb-4 flex w-full items-center gap-3 text-[0.72rem] text-muted">
+                      <span className="h-px flex-1 bg-line" />
+                      {pc.compressed}
+                      <span className="h-px flex-1 bg-line" />
+                    </div>
+                  )}
+                  {m.role === 'assistant' && m.ab ? (
+                    <div className="w-full">
+                      <p className="mb-2 text-[0.8rem] text-muted">{pc.abTitle}</p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {(['a', 'b'] as const).map((w) => (
+                          <div key={w} className="flex flex-col rounded-2xl border border-line bg-mist p-4">
+                            <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.08em] text-muted">{w === 'a' ? pc.abA : pc.abB}</p>
+                            <div className="flex-1 text-[0.95rem] leading-[1.65] text-ink">
+                              <FormattedReply text={w === 'a' ? m.content : m.ab!.textB} copyLabel={copy.copy} copiedLabel={copy.copied} />
+                            </div>
+                            <button
+                              type="button"
+                              disabled={loading}
+                              onClick={() => activeId && resolveAb(activeId, m.id, w)}
+                              className="mt-3 self-start rounded-full border border-line bg-paper px-3.5 py-1.5 text-[0.8rem] text-ink transition-colors hover:border-ink disabled:opacity-50"
+                            >
+                              {pc.abPick}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          writeAb({ done: 3, lastAt: 0 });
+                          if (activeId) resolveAb(activeId, m.id, null);
+                        }}
+                        className="mt-2 text-[0.75rem] text-muted underline-offset-2 hover:text-ink hover:underline"
+                      >
+                        {pc.abStop}
+                      </button>
+                    </div>
+                  ) : (
                   <div
                     className={`break-words text-[0.98rem] leading-[1.7] ${
                       m.role === 'user'
@@ -753,8 +947,9 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                       m.content
                     )}
                   </div>
+                  )}
 
-                  {m.role === 'assistant' && m.sources && m.sources.length > 0 && (
+                  {m.role === 'assistant' && !m.ab && m.sources && m.sources.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5 px-1 text-[0.72rem] text-muted">
                       <span className="mr-0.5">{copy.sources}</span>
                       {m.sources.map((s) => (
@@ -772,7 +967,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                     </div>
                   )}
 
-                  {m.role === 'assistant' && (
+                  {m.role === 'assistant' && !m.ab && (
                     <div className="mt-1 flex items-center gap-3 px-1 text-[0.72rem] text-muted">
                       {!m.error && <CopyButton text={m.content} label={copy.copy} copiedLabel={copy.copied} />}
                       {isLast && canRegenerate && (
@@ -830,6 +1025,26 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           className="border-t border-line bg-paper/60 p-3 backdrop-blur"
         >
           <div className="mx-auto w-full max-w-3xl">
+            {notice && (
+              <p className="mb-2 px-1 text-[0.78rem] text-muted" role="status">
+                ✓ {notice}
+              </p>
+            )}
+            {factSuggestion && consent === true && (
+              <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-line bg-mist px-4 py-2.5 text-[0.82rem] text-ink/85">
+                <span className="min-w-0 flex-1">
+                  {pc.factAsk} <span className="font-medium text-ink">« {factSuggestion} »</span>
+                </span>
+                <span className="flex shrink-0 gap-2">
+                  <button type="button" onClick={() => void saveFact()} className="rounded-full bg-ink px-3.5 py-1 text-[0.78rem] font-medium text-paper hover:opacity-85">
+                    {pc.factYes}
+                  </button>
+                  <button type="button" onClick={() => setFactSuggestion(null)} className="rounded-full border border-line px-3.5 py-1 text-[0.78rem] text-ink hover:border-ink/40">
+                    {pc.factNo}
+                  </button>
+                </span>
+              </div>
+            )}
             {userId && consent === null && !prefsOpen && (
               <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-line bg-mist px-4 py-2.5 text-[0.82rem] text-ink/85">
                 <span className="min-w-0 flex-1">{pc.consentQuestion}</span>
@@ -963,6 +1178,8 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           consent={consent}
           onConsent={changeConsent}
           onForget={forgetAll}
+          facts={facts}
+          onDeleteFact={(id) => void deleteFact(id)}
           onClose={() => setPrefsOpen(false)}
           error={prefsError}
         />
