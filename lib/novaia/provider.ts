@@ -254,7 +254,8 @@ const STATES: ReplyState[] = ['recherche', 'calcul', 'reflexion', 'redaction'];
 export async function streamReply(
   messages: ChatMessage[],
   locale: Lang,
-  emit: (state: ReplyState) => void
+  emit: (state: ReplyState) => void,
+  style?: Record<string, string>
 ): Promise<ReplyResult> {
   const last = [...messages].reverse().find((m) => m.role === 'user');
   if (!SPACE_URL || !last?.content.trim()) return generateReply(messages, locale);
@@ -270,14 +271,27 @@ export async function streamReply(
   const auth: Record<string, string> = HF_TOKEN ? { Authorization: `Bearer ${HF_TOKEN}` } : {};
 
   let started: { event_id?: unknown } | null = null;
+  let endpoint = 'chat_stream';
   try {
-    const start = await fetch(`${SPACE_URL}/gradio_api/call/chat_stream`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...auth },
-      body: JSON.stringify({ data: [payload, false] }),
-      signal,
-      cache: 'no-store',
-    });
+    const post = (name: string, data: unknown[]) =>
+      fetch(`${SPACE_URL}/gradio_api/call/${name}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...auth },
+        body: JSON.stringify({ data }),
+        signal,
+        cache: 'no-store',
+      });
+    let start: Response;
+    if (style && Object.keys(style).length > 0) {
+      endpoint = 'chat_stream_style';
+      start = await post(endpoint, [payload, false, JSON.stringify(style)]);
+      if (!start.ok && start.status !== 429) {
+        endpoint = 'chat_stream'; // Space pas encore à jour pour le style : réponse sans style
+        start = await post(endpoint, [payload, false]);
+      }
+    } else {
+      start = await post(endpoint, [payload, false]);
+    }
     if (start.status === 429) {
       console.error('[novaia] quota : dépôt refusé (429) chat_stream');
       return { reply: PROBLEMS.quota[locale], mode: 'demo' };
@@ -296,7 +310,7 @@ export async function streamReply(
   };
 
   try {
-    const stream = await fetch(`${SPACE_URL}/gradio_api/call/chat_stream/${encodeURIComponent(started.event_id)}`, {
+    const stream = await fetch(`${SPACE_URL}/gradio_api/call/${endpoint}/${encodeURIComponent(started.event_id)}`, {
       headers: auth,
       signal,
       cache: 'no-store',

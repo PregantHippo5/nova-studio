@@ -8,6 +8,10 @@ import FormattedReply from '@/components/novaia/FormattedReply';
 import CopyButton from '@/components/novaia/CopyButton';
 import { prepareImage, type PreparedImage } from '@/lib/novaia/image';
 import type { ReplyState } from '@/lib/novaia/provider';
+import NovaiaPrefs from '@/components/novaia/NovaiaPrefs';
+import { prefsCopy } from '@/lib/novaia/prefsCopy';
+import { cleanStyle, type Style } from '@/lib/novaia/style';
+import { createClient } from '@/lib/supabase/client';
 import {
   MAX_CONVERSATIONS,
   MAX_MESSAGES,
@@ -115,6 +119,80 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [steps, setSteps] = useState<ReplyState[]>([]); // ce que NovaIA fait en ce moment (recherche, calcul, réflexion, rédaction)
   const [drawer, setDrawer] = useState(false);
+
+  // --- compte, style de réponse et consentement (les préférences ne sont gardées sur le compte qu'avec l'accord de la personne)
+  const pc = prefsCopy(locale);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [style, setStyle] = useState<Style>({});
+  const [consent, setConsent] = useState<boolean | null>(null);
+  const [prefsOpen, setPrefsOpen] = useState(false);
+  const [prefsError, setPrefsError] = useState(false);
+  const styleRef = useRef<Style>({});
+  styleRef.current = style;
+
+  const supabase = useMemo(() => {
+    try {
+      return createClient();
+    } catch {
+      return null; // pas de connexion possible : NovaIA marche quand même, sans compte
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        const uid: string | undefined = data?.user?.id;
+        if (!uid || cancelled) return;
+        setUserId(uid);
+        const { data: row } = await supabase.from('novaia_profiles').select('memory_consent, style').eq('user_id', uid).maybeSingle();
+        if (cancelled) return;
+        if (row) {
+          setConsent(row.memory_consent === true);
+          if (row.memory_consent === true) setStyle(cleanStyle(row.style));
+        }
+      } catch {
+        /* hors ligne ou tables absentes : on continue sans compte */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
+
+  const saveProfile = useCallback(
+    async (nextStyle: Style, nextConsent: boolean) => {
+      if (!supabase || !userId) return;
+      const { error } = await supabase.from('novaia_profiles').upsert(
+        { user_id: userId, memory_consent: nextConsent, style: nextConsent ? nextStyle : {}, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      );
+      setPrefsError(!!error);
+    },
+    [supabase, userId]
+  );
+
+  const changeStyle = (s: Style) => {
+    const clean = cleanStyle(s);
+    setStyle(clean);
+    if (userId && consent === true) void saveProfile(clean, true);
+  };
+
+  const changeConsent = (v: boolean) => {
+    setConsent(v);
+    if (userId) void saveProfile(styleRef.current, v);
+  };
+
+  const forgetAll = async () => {
+    if (!supabase || !userId || !window.confirm(pc.forgetConfirm)) return;
+    const a = await supabase.from('novaia_memories').delete().eq('user_id', userId);
+    const b = await supabase.from('novaia_profiles').upsert({ user_id: userId, memory_consent: false, style: {}, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    setPrefsError(!!(a.error || b.error));
+    setStyle({});
+    setConsent(false);
+  };
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [attachment, setAttachment] = useState<PreparedImage | null>(null);
@@ -236,7 +314,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           : await fetch('/api/novaia/chat', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ locale, messages: payload, stream: true }),
+              body: JSON.stringify({ locale, messages: payload, stream: true, style: styleRef.current }),
               signal: controller.signal,
             });
 
@@ -594,6 +672,22 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           </div>
           <button
             type="button"
+            onClick={() => setPrefsOpen(true)}
+            className="shrink-0 rounded-full border border-line px-3 py-1.5 text-[0.78rem] text-muted transition-colors hover:border-ink/40 hover:text-ink"
+          >
+            {pc.open}
+            {Object.keys(style).length > 0 && <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent align-middle" aria-hidden />}
+          </button>
+          {!userId && (
+            <a
+              href={`/${locale}/login?next=/${locale}/novaia`}
+              className="hidden shrink-0 rounded-full bg-ink px-3.5 py-1.5 text-[0.78rem] font-medium text-paper hover:opacity-85 sm:block"
+            >
+              {pc.signIn}
+            </a>
+          )}
+          <button
+            type="button"
             onClick={newChat}
             disabled={loading || empty}
             className="hidden shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[0.78rem] text-muted transition-colors hover:border-ink/40 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 sm:flex md:hidden"
@@ -736,6 +830,19 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           className="border-t border-line bg-paper/60 p-3 backdrop-blur"
         >
           <div className="mx-auto w-full max-w-3xl">
+            {userId && consent === null && !prefsOpen && (
+              <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-line bg-mist px-4 py-2.5 text-[0.82rem] text-ink/85">
+                <span className="min-w-0 flex-1">{pc.consentQuestion}</span>
+                <span className="flex shrink-0 gap-2">
+                  <button type="button" onClick={() => changeConsent(true)} className="rounded-full bg-ink px-3.5 py-1 text-[0.78rem] font-medium text-paper hover:opacity-85">
+                    {pc.consentYes}
+                  </button>
+                  <button type="button" onClick={() => changeConsent(false)} className="rounded-full border border-line px-3.5 py-1 text-[0.78rem] text-ink hover:border-ink/40">
+                    {pc.consentNo}
+                  </button>
+                </span>
+              </div>
+            )}
             {(activeImage || attachError || imageLost) && (
               <div className="mb-2 flex items-center gap-2 px-1 text-[0.75rem] text-muted">
                 {activeImage && (
@@ -846,6 +953,20 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           </div>
         </form>
       </section>
+      {prefsOpen && (
+        <NovaiaPrefs
+          c={pc}
+          locale={locale}
+          style={style}
+          onStyle={changeStyle}
+          loggedIn={!!userId}
+          consent={consent}
+          onConsent={changeConsent}
+          onForget={forgetAll}
+          onClose={() => setPrefsOpen(false)}
+          error={prefsError}
+        />
+      )}
     </div>
   );
 }

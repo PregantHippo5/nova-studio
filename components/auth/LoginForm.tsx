@@ -7,6 +7,13 @@ import { Locale } from '@/lib/i18n/config';
 import { Dictionary } from '@/lib/i18n/dictionaries';
 import { createClient } from '@/lib/supabase/client';
 
+/** Page où revenir après la connexion (paramètre ?next=). Seulement un chemin du site : jamais un lien externe. */
+function safeNext(): string | null {
+  if (typeof window === 'undefined') return null;
+  const n = new URLSearchParams(window.location.search).get('next');
+  return n && /^\/(?!\/)[A-Za-z0-9/_\-.?=&%]*$/.test(n) ? n : null;
+}
+
 export default function LoginForm({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const router = useRouter();
   const supabase = createClient();
@@ -29,7 +36,7 @@ export default function LoginForm({ locale, dict }: { locale: Locale; dict: Dict
       if (error) {
         setError(error.message);
       } else {
-        router.push(`/${locale}/account`);
+        router.push(safeNext() ?? `/${locale}/account`);
         router.refresh();
       }
     } else {
@@ -47,7 +54,7 @@ export default function LoginForm({ locale, dict }: { locale: Locale; dict: Dict
     await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/${locale}/account`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${safeNext() ?? `/${locale}/account`}`,
       },
     });
   };
