@@ -194,7 +194,12 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
         const uid: string | undefined = data?.user?.id;
         if (!uid || cancelled) return;
         setUserId(uid);
-        const { data: row } = await supabase.from('novaia_profiles').select('memory_consent, style, sync_conversations').eq('user_id', uid).maybeSingle();
+        let { data: row, error: rowError } = await supabase.from('novaia_profiles').select('memory_consent, style, sync_conversations').eq('user_id', uid).maybeSingle();
+        if (rowError) {
+          // la colonne de synchronisation n'existe pas encore (SQL 002 pas lancé) : on relit sans elle
+          const again = await supabase.from('novaia_profiles').select('memory_consent, style').eq('user_id', uid).maybeSingle();
+          row = again.data as typeof row;
+        }
         if (cancelled) return;
         if (row) {
           setConsent(row.memory_consent === true);
