@@ -853,7 +853,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
       {/* Barre latérale : conversations */}
       <aside
-        className={`absolute inset-y-0 left-0 z-30 flex w-72 max-w-[85%] flex-col border-r border-line bg-mist transition-transform duration-200 md:static md:w-72 md:max-w-none md:translate-x-0 ${
+        className={`absolute inset-y-0 left-0 z-30 flex w-80 max-w-[88%] flex-col border-r border-line bg-mist transition-transform duration-200 md:static md:w-72 md:max-w-none md:translate-x-0 ${
           drawer ? 'translate-x-0' : '-translate-x-full'
         }`}
         aria-label={copy.sidebarTitle}
@@ -868,7 +868,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
             type="button"
             onClick={newChat}
             disabled={loading}
-            className="flex flex-1 items-center gap-2 rounded-xl border border-line bg-mist px-3 py-2 text-[0.85rem] font-medium text-ink transition-colors hover:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex flex-1 items-center gap-2 rounded-xl border border-line bg-mist px-3 py-3 text-[0.95rem] font-medium md:py-2 md:text-[0.85rem] text-ink transition-colors hover:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {Icon.plus}
             <span className="truncate">{copy.newChat}</span>
@@ -909,7 +909,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                             onClick={() => openConv(c.id)}
                             onDoubleClick={() => startRename(c)}
                             aria-current={isActive ? 'true' : undefined}
-                            className={`block w-full truncate rounded-lg px-2.5 py-2 pr-14 text-left text-[0.85rem] transition-colors ${
+                            className={`block w-full truncate rounded-lg px-3 py-3 pr-20 text-left text-[0.95rem] md:px-2.5 md:py-2 md:pr-14 md:text-[0.85rem] transition-colors ${
                               isActive ? 'bg-mist font-medium text-ink' : 'text-ink/75 hover:bg-mist/70'
                             }`}
                           >
@@ -921,7 +921,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                               onClick={() => startRename(c)}
                               aria-label={copy.rename}
                               title={copy.rename}
-                              className="rounded-md p-1.5 text-muted transition-colors hover:bg-paper hover:text-ink"
+                              className="rounded-md p-2.5 text-muted transition-colors hover:bg-paper hover:text-ink md:p-1.5"
                             >
                               {Icon.pencil}
                             </button>
@@ -931,7 +931,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                               disabled={loadingId === c.id}
                               aria-label={copy.remove}
                               title={copy.remove}
-                              className="rounded-md p-1.5 text-muted transition-colors hover:bg-paper hover:text-ink disabled:opacity-30"
+                              className="rounded-md p-2.5 text-muted transition-colors hover:bg-paper hover:text-ink disabled:opacity-30 md:p-1.5"
                             >
                               {Icon.trash}
                             </button>
@@ -963,12 +963,12 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
       {/* Zone de conversation */}
       <section className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center gap-3 border-b border-line bg-paper/60 px-4 py-3 backdrop-blur">
+        <div className="flex items-center gap-3 border-b border-line bg-paper/60 px-2 py-2 backdrop-blur md:px-4 md:py-3">
           <button
             type="button"
             onClick={() => setDrawer(true)}
             aria-label={copy.openMenu}
-            className="shrink-0 rounded-lg p-1.5 text-ink/80 transition-colors hover:bg-mist md:hidden"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink/80 transition-colors hover:bg-mist md:hidden"
           >
             {Icon.menu}
           </button>
@@ -979,12 +979,12 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
             <span aria-hidden>←</span>
             {copy.backToSite}
           </a>
-          <Orb size={30} />
+          <span className="hidden sm:block"><Orb size={30} /></span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[0.95rem] font-semibold leading-none text-ink">
+            <p className="truncate text-[1.02rem] font-semibold leading-tight text-ink md:text-[0.95rem] md:leading-none">
               {active ? headerTitle : copy.assistantName}
             </p>
-            <p className="mt-1 truncate font-mono text-[0.62rem] uppercase leading-snug tracking-[0.08em] text-muted">
+            <p className="mt-1 hidden truncate font-mono text-[0.62rem] sm:block uppercase leading-snug tracking-[0.08em] text-muted">
               {active ? copy.assistantName : copy.previewBadge}
             </p>
           </div>
@@ -994,7 +994,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
               onClick={() => setDocsOpen(true)}
               aria-label={pc.docsButton}
               title={pc.docsButton}
-              className="flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[0.78rem] text-muted transition-colors hover:border-ink/40 hover:text-ink"
+              className="flex h-11 min-w-[2.75rem] shrink-0 items-center justify-center gap-1.5 rounded-full border border-line px-3 text-[0.78rem] text-muted transition-colors hover:border-ink/40 hover:text-ink md:h-auto md:min-w-0 md:py-1.5"
             >
               {Icon.clip}
               <span className="hidden sm:inline">{pc.docsButton}</span>
@@ -1006,7 +1006,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           <button
             type="button"
             onClick={() => setPrefsOpen(true)}
-            className="shrink-0 rounded-full border border-line px-3 py-1.5 text-[0.78rem] text-muted transition-colors hover:border-ink/40 hover:text-ink"
+            className="h-11 shrink-0 rounded-full border border-line px-3.5 text-[0.78rem] text-muted transition-colors hover:border-ink/40 hover:text-ink md:h-auto md:py-1.5"
           >
             {pc.open}
             {Object.keys(style).length > 0 && <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent align-middle" aria-hidden />}
@@ -1032,7 +1032,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
         <div
           ref={listRef}
-          className="flex-1 overflow-y-auto px-4 py-6 sm:px-6"
+          className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6"
           role="log"
           aria-live="polite"
           aria-label={copy.assistantName}
@@ -1040,10 +1040,10 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col space-y-4">
             {empty && (
               <div className="flex flex-1 flex-col items-center justify-center gap-5 py-6 text-center">
-                <Orb size={88} />
+                <span className="scale-75 sm:scale-100"><Orb size={88} /></span>
                 <div>
-                  <h3 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">{copy.greeting}</h3>
-                  <p className="mx-auto mt-3 max-w-md text-[0.95rem] leading-relaxed text-muted">{copy.emptyText}</p>
+                  <h3 className="font-display text-[1.7rem] font-bold leading-tight tracking-tight text-ink sm:text-4xl">{copy.greeting}</h3>
+                  <p className="mx-auto mt-2 max-w-md text-[0.95rem] leading-relaxed text-muted sm:mt-3">{copy.emptyText}</p>
                 </div>
                 <div className="grid w-full max-w-2xl gap-2.5 sm:grid-cols-3">
                   {copy.suggestions.map((s) => (
@@ -1052,7 +1052,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                       type="button"
                       onClick={() => send(s)}
                       disabled={loading}
-                      className="rounded-2xl border border-line bg-mist px-4 py-3.5 text-left text-[0.85rem] leading-snug text-ink/85 transition-colors hover:border-ink/40 hover:bg-paper disabled:opacity-50"
+                      className="rounded-2xl border border-line bg-mist px-4 py-3.5 text-left text-[0.95rem] leading-snug md:text-[0.85rem] text-ink/85 transition-colors hover:border-ink/40 hover:bg-paper disabled:opacity-50"
                     >
                       {s}
                     </button>
@@ -1108,7 +1108,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   <div
                     className={`break-words text-[0.98rem] leading-[1.7] ${
                       m.role === 'user'
-                        ? 'max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-ink px-4 py-2.5 text-paper'
+                        ? 'max-w-[88%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-ink px-4 py-2.5 text-paper'
                         : m.error
                         ? 'max-w-full italic text-muted'
                         : 'w-full max-w-full text-ink'
@@ -1215,7 +1215,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
             e.preventDefault();
             send(input);
           }}
-          className="border-t border-line bg-paper/60 p-3 backdrop-blur"
+          className="border-t border-line bg-paper/60 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur md:p-3"
         >
           <div className="mx-auto w-full max-w-3xl">
             {notice && (
@@ -1314,7 +1314,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                 {!activeImage && !attachError && imageLost && <span>{copy.imageLost}</span>}
               </div>
             )}
-            <div className="flex items-end gap-2 rounded-3xl border border-line bg-mist px-4 py-2.5 shadow-sm transition-colors focus-within:border-ink/40 focus-within:bg-paper">
+            <div className="flex items-end gap-1 rounded-3xl border border-line bg-mist py-1.5 pl-1.5 pr-1.5 shadow-sm md:gap-2 md:px-4 md:py-2.5 transition-colors focus-within:border-ink/40 focus-within:bg-paper">
               <input
                 ref={fileRef}
                 type="file"
@@ -1355,14 +1355,14 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   aria-haspopup="menu"
                   aria-expanded={menuOpen}
                   title={`${copy.attach} — ${copy.attachHint}`}
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-mist hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-muted md:h-9 md:w-9 transition-colors hover:bg-mist hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   {Icon.clip}
                 </button>
                 {menuOpen && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} aria-hidden />
-                    <div role="menu" className="absolute bottom-11 left-0 z-40 w-52 overflow-hidden rounded-2xl border border-line bg-paper py-1.5 shadow-lg">
+                    <div role="menu" className="absolute bottom-12 left-0 z-40 w-56 overflow-hidden rounded-2xl border border-line bg-paper py-1.5 shadow-lg">
                       {[
                         { label: pc.menuImage, ref: fileRef },
                         { label: pc.menuDoc, ref: docRef },
@@ -1376,7 +1376,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                             setMenuOpen(false);
                             o.ref.current?.click();
                           }}
-                          className="block w-full px-4 py-2 text-left text-[0.88rem] text-ink transition-colors hover:bg-mist"
+                          className="block w-full px-4 py-3 text-left text-[0.95rem] text-ink md:py-2 md:text-[0.88rem] transition-colors hover:bg-mist"
                         >
                           {o.label}
                         </button>
@@ -1408,7 +1408,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                 }}
                 rows={1}
                 placeholder={activeImage ? copy.imagePlaceholder : copy.placeholder}
-                className="max-h-40 flex-1 resize-none bg-transparent py-1.5 text-[0.92rem] text-ink outline-none placeholder:text-muted"
+                className="max-h-40 flex-1 resize-none bg-transparent py-2.5 text-base md:py-1.5 md:text-[0.92rem] text-ink outline-none placeholder:text-muted"
               />
               {loading ? (
                 <button
@@ -1416,7 +1416,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   onClick={stop}
                   aria-label={copy.stop}
                   title={copy.stop}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line text-ink transition-colors hover:bg-mist"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line text-ink md:h-9 md:w-9 transition-colors hover:bg-mist"
                 >
                   {Icon.stop}
                 </button>
@@ -1426,14 +1426,14 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   disabled={!canSend}
                   aria-label={copy.send}
                   title={copy.send}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-paper transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-30"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink text-paper md:h-9 md:w-9 transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   {Icon.send}
                 </button>
               )}
             </div>
 
-            <div className="mt-2 flex items-center justify-between gap-3 px-1 text-[0.7rem] text-muted">
+            <div className="mt-1 hidden items-center justify-between gap-3 px-1 text-[0.7rem] text-muted sm:flex md:mt-2">
               <span>{copy.footnote}</span>
               {input.length > MAX_LEN * 0.8 && (
                 <span className="shrink-0 font-mono">

@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -89,7 +89,7 @@ body {
   text-wrap: balance;
 }
 
-/* Quadrillage discret du hero, estompé vers les bords. */
+/* Quadrillage discret du hero, estompÃ© vers les bords. */
 .hero-grid {
   background-image:
     linear-gradient(to right, rgb(var(--line)) 1px, transparent 1px),
@@ -100,25 +100,25 @@ body {
 }
 
 /* ------------------------------------------------------------------ */
-/* Effets (refonte « waouh »)                                          */
+/* Effets (refonte Â« waouh Â»)                                          */
 /* ------------------------------------------------------------------ */
 
 .font-display {
   font-family: var(--font-display), var(--font-inter), system-ui, sans-serif;
 }
 
-/* Contour de lettres, utilisé par le bandeau défilant. */
+/* Contour de lettres, utilisÃ© par le bandeau dÃ©filant. */
 .text-outline {
   color: transparent;
   -webkit-text-stroke: 1.5px rgb(var(--ink));
 }
 
-/* Intro : masquée dès le départ si elle a déjà été vue dans cette session. */
+/* Intro : masquÃ©e dÃ¨s le dÃ©part si elle a dÃ©jÃ  Ã©tÃ© vue dans cette session. */
 html.nova-seen .nova-preloader {
   display: none;
 }
 
-/* Filet de sécurité : si le JavaScript ne démarre jamais, l'intro disparaît toute seule. */
+/* Filet de sÃ©curitÃ© : si le JavaScript ne dÃ©marre jamais, l'intro disparaÃ®t toute seule. */
 .nova-preloader {
   animation: nova-failsafe 0s linear 7s forwards;
 }
@@ -130,7 +130,7 @@ html.nova-seen .nova-preloader {
   }
 }
 
-/* Curseur personnalisé : actif seulement avec une vraie souris. */
+/* Curseur personnalisÃ© : actif seulement avec une vraie souris. */
 html.has-cursor,
 html.has-cursor * {
 }
@@ -140,7 +140,7 @@ html.has-cursor textarea {
   cursor: text !important;
 }
 
-/* Lettres du hero : l'éclairage dépend de la variable --p (0 à 1) posée par le curseur. */
+/* Lettres du hero : l'Ã©clairage dÃ©pend de la variable --p (0 Ã  1) posÃ©e par le curseur. */
 .hero-letter {
   --p: 0;
   transform: translateY(calc(var(--p) * -0.05em));
@@ -148,16 +148,50 @@ html.has-cursor textarea {
   transition: transform 0.25s ease-out, text-shadow 0.25s ease-out;
 }
 
-/* ===== NOVA-MOBILE : lisibilité sur petit écran ===== */
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-@media (max-width: 640px) {
-  [class*="text-[0.6"], [class*="text-[0.7"] { font-size: 0.8125rem !important; }
-  [class*="text-[0.8"] { font-size: 0.9rem !important; }
-  .text-xs { font-size: 0.8125rem !important; }
-  .text-sm { font-size: 0.975rem !important; line-height: 1.6 !important; }
-  [class*="text-[0.9"] { font-size: 1rem !important; }
-  [class*="text-[1.05rem]"], [class*="text-[1.15rem]"] { font-size: 1.1rem !important; }
-  h1[aria-label="Nova Studio"] { font-size: 5.4rem !important; }
-  section > div[aria-hidden="true"] canvas { opacity: 0.55; }
-  header nav a, header nav button { min-height: 2.75rem; display: flex; align-items: center; }
+
+/* ===== NOVA-MOBILE : lisibilitÃ© sur petit Ã©cran (ajoutÃ©, ne modifie rien d'autre) ===== */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
+@media (max-width: 640px) {
+  /* Ã©tiquettes et petits textes : jamais sous 13 px */
+  [class*="text-[0.6"],
+  [class*="text-[0.7"] {
+    font-size: 0.8125rem !important;
+  }
+  [class*="text-[0.8"] {
+    font-size: 0.9rem !important;
+  }
+  .text-xs {
+    font-size: 0.8125rem !important;
+  }
+  /* paragraphes courants */
+  .text-sm {
+    font-size: 0.975rem !important;
+    line-height: 1.6 !important;
+  }
+  [class*="text-[0.9"] {
+    font-size: 1rem !important;
+  }
+  [class*="text-[1.05rem]"],
+  [class*="text-[1.15rem]"] {
+    font-size: 1.1rem !important;
+  }
+  /* titre du hero un peu plus grand, la scÃ¨ne en arriÃ¨re-plan plus discrÃ¨te */
+  h1[aria-label="Nova Studio"] {
+    font-size: min(4.2rem, 17vw) !important;
+    line-height: 0.9 !important;
+  }
+  section > div[aria-hidden="true"] canvas {
+    opacity: 0.55;
+  }
+  /* cibles tactiles plus confortables dans le menu mobile */
+  header nav a,
+  header nav button {
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+  }
+}
+
