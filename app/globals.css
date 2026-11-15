@@ -147,3 +147,17 @@ html.has-cursor textarea {
   text-shadow: 0 0 calc(var(--p) * 0.45em) rgb(var(--accent) / calc(var(--p) * 0.85));
   transition: transform 0.25s ease-out, text-shadow 0.25s ease-out;
 }
+
+/* ===== NOVA-MOBILE : lisibilité sur petit écran ===== */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@media (max-width: 640px) {
+  [class*="text-[0.6"], [class*="text-[0.7"] { font-size: 0.8125rem !important; }
+  [class*="text-[0.8"] { font-size: 0.9rem !important; }
+  .text-xs { font-size: 0.8125rem !important; }
+  .text-sm { font-size: 0.975rem !important; line-height: 1.6 !important; }
+  [class*="text-[0.9"] { font-size: 1rem !important; }
+  [class*="text-[1.05rem]"], [class*="text-[1.15rem]"] { font-size: 1.1rem !important; }
+  h1[aria-label="Nova Studio"] { font-size: 5.4rem !important; }
+  section > div[aria-hidden="true"] canvas { opacity: 0.55; }
+  header nav a, header nav button { min-height: 2.75rem; display: flex; align-items: center; }
+}
