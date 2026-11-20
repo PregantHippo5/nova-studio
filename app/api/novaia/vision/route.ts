@@ -9,6 +9,7 @@
 //    que pour le texte puisqu'une image consomme bien plus de temps GPU.
 
 import { readImage, VISION_QUESTION_MAX } from '@/lib/novaia/vision';
+import { limite, messageLimite } from '@/lib/novaia/ratelimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,6 +52,11 @@ export async function POST(request: Request) {
 
   if (isRateLimited(clientKey(request), Date.now())) {
     return Response.json({ error: 'Trop de requêtes. Réessayez dans un instant.' }, { status: 429 });
+  }
+
+  const verdict = await limite(request, 'vision');
+  if (verdict !== 'ok') {
+    return Response.json({ error: messageLimite(verdict, request.headers.get('accept-language')?.toLowerCase().startsWith('en') ? 'en' : 'fr'), limite: verdict }, { status: 429 });
   }
 
   let body: { locale?: unknown; question?: unknown; image?: unknown };

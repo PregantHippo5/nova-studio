@@ -11,6 +11,7 @@
 
 import { generateReply, streamReply, type ChatMessage } from '@/lib/novaia/provider';
 import { cleanPerso } from '@/lib/novaia/style';
+import { limite, messageLimite } from '@/lib/novaia/ratelimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -80,6 +81,11 @@ export async function POST(request: Request) {
 
   if (isRateLimited(clientKey(request), Date.now())) {
     return Response.json({ error: 'Trop de requêtes. Réessayez dans un instant.' }, { status: 429 });
+  }
+
+  const verdict = await limite(request, 'chat');
+  if (verdict !== 'ok') {
+    return Response.json({ error: messageLimite(verdict, request.headers.get('accept-language')?.toLowerCase().startsWith('en') ? 'en' : 'fr'), limite: verdict }, { status: 429 });
   }
 
   let body: { locale?: unknown; messages?: unknown; stream?: unknown; style?: unknown; memoire?: unknown; resume?: unknown; ab?: unknown };

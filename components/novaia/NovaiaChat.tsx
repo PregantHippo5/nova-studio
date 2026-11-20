@@ -16,6 +16,7 @@ import { fetchRemote, mergeConversations, pushConversation, pushDeletion, purgeO
 import { putDoc, loadConvDocs, deleteConvDocs, clearAllDocs } from '@/lib/novaia/files';
 import { isPdf, openPdf, type OpenedPdf } from '@/lib/novaia/pdf';
 import { createClient } from '@/lib/supabase/client';
+import { dictationSupported, ttsSupported, startDictation, speak, stopSpeaking } from '@/lib/novaia/voice';
 import {
   MAX_CONVERSATIONS,
   MAX_MESSAGES,
@@ -106,6 +107,12 @@ const Icon = {
       <path d="M20 11.5l-8.2 8.2a5 5 0 01-7-7l8.6-8.6a3.4 3.4 0 014.8 4.8l-8.6 8.6a1.8 1.8 0 01-2.5-2.5l7.9-7.9" />
     </svg>
   ),
+  mic: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5 11a7 7 0 0014 0M12 18v3" />
+    </svg>
+  ),
   image: (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -127,6 +134,10 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const [activeId, setActiveId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [input, setInput] = useState('');
+  const [voiceOk, setVoiceOk] = useState({ mic: false, tts: false });
+  const [listening, setListening] = useState(false);
+  const [speakingId, setSpeakingId] = useState<number | null>(null);
+  const stopDictRef = useRef<(() => void) | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [steps, setSteps] = useState<ReplyState[]>([]); // ce que NovaIA fait en ce moment (recherche, calcul, réflexion, rédaction)
   const [drawer, setDrawer] = useState(false);
@@ -373,6 +384,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
   useEffect(() => {
     mounted.current = true;
+    setVoiceOk({ mic: dictationSupported(), tts: ttsSupported() });
     setConvs(loadConversations());
     setReady(true);
     const flush = () => saveConversations(convsRef.current);
@@ -380,6 +392,8 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     return () => {
       mounted.current = false;
       abortRef.current?.abort();
+      stopDictRef.current?.();
+      stopSpeaking();
       window.removeEventListener('pagehide', flush);
     };
   }, []);
@@ -592,10 +606,11 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           handle(buffer);
           if (!answered && !controller.signal.aborted) push(copy.error, true);
         } else {
-          const data: { reply?: unknown } = await res.json().catch(() => ({}));
+          const data: { reply?: unknown; error?: unknown; limite?: unknown } = await res.json().catch(() => ({}));
 
           if (!res.ok || typeof data.reply !== 'string') {
-            push(res.status === 429 ? copy.rateLimited : res.status === 413 ? copy.imageTooBig : copy.error, true);
+            const dur = data.limite === 'day' || data.limite === 'global';
+            push(res.status === 429 ? (dur && typeof data.error === 'string' ? data.error : copy.rateLimited) : res.status === 413 ? copy.imageTooBig : copy.error, true);
           } else {
             push(data.reply);
           }
@@ -646,6 +661,9 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       const image = (attachment ?? known)?.dataUrl; // nouvelle image, sinon celle déjà active dans la conversation
       const content = text.trim().slice(0, MAX_LEN) || (attachment ? copy.imageDefaultQuestion : '');
       if (!content || loading) return;
+      stopDictRef.current?.();
+      stopSpeaking();
+      setSpeakingId(null);
 
       let convId = activeId;
       let history: StoredMessage[];
@@ -1163,6 +1181,25 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   {m.role === 'assistant' && !m.ab && (
                     <div className="mt-1 flex items-center gap-3 px-1 text-[0.72rem] text-muted">
                       {!m.error && <CopyButton text={m.content} label={copy.copy} copiedLabel={copy.copied} />}
+                      {!m.error && voiceOk.tts && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (speakingId === m.id) {
+                              stopSpeaking();
+                              setSpeakingId(null);
+                              return;
+                            }
+                            setSpeakingId(m.id);
+                            speak(m.content, locale === 'en' ? 'en' : 'fr', () => {
+                              if (mounted.current) setSpeakingId((cur) => (cur === m.id ? null : cur));
+                            });
+                          }}
+                          className="transition-colors hover:text-ink"
+                        >
+                          {speakingId === m.id ? pc.listenStop : pc.listen}
+                        </button>
+                      )}
                       {isLast && canRegenerate && (
                         <button type="button" onClick={regenerate} className="transition-colors hover:text-ink">
                           {copy.regenerate}
@@ -1385,6 +1422,42 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   </>
                 )}
               </div>
+              {voiceOk.mic && (
+                <button
+                  type="button"
+                  disabled={loading}
+                  aria-label={listening ? pc.micStop : pc.micStart}
+                  aria-pressed={listening}
+                  title={listening ? pc.micStop : pc.micStart}
+                  onClick={() => {
+                    if (listening) {
+                      stopDictRef.current?.();
+                      return;
+                    }
+                    const base = input.trim();
+                    const stop = startDictation(
+                      locale === 'en' ? 'en' : 'fr',
+                      (t) => setInput((base ? base + ' ' : '') + t.slice(0, MAX_LEN)),
+                      (err) => {
+                        stopDictRef.current = null;
+                        if (mounted.current) {
+                          setListening(false);
+                          if (err === 'not-allowed' || err === 'service-not-allowed') setAttachError(pc.micDenied);
+                        }
+                      }
+                    );
+                    if (stop) {
+                      stopDictRef.current = stop;
+                      setListening(true);
+                    }
+                  }}
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-30 md:h-9 md:w-9 ${
+                    listening ? 'animate-pulse bg-ink text-paper' : 'text-muted hover:bg-mist hover:text-ink'
+                  }`}
+                >
+                  {Icon.mic}
+                </button>
+              )}
               <label htmlFor="novaia-input" className="sr-only">
                 {copy.inputLabel}
               </label>

@@ -72,7 +72,12 @@ export default function Footer({ locale, dict }: { locale: Locale; dict: Diction
 
       <Container className="flex flex-col gap-2 border-t border-line py-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
         <p>© {new Date().getFullYear()} {dict.footer.copyright}</p>
-        <p>{dict.footer.builtWith}</p>
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <Link href={`/${locale}/privacy`} className="transition-colors hover:text-ink">
+            {locale === 'en' ? 'Privacy' : 'Confidentialité'}
+          </Link>
+          <span>{dict.footer.builtWith}</span>
+        </p>
       </Container>
     </footer>
   );

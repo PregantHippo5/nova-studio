@@ -56,6 +56,11 @@ export interface PrefsCopy {
   syncEnable: string;
   syncDisable: string;
   syncDisableConfirm: string;
+  micStart: string;
+  micStop: string;
+  micDenied: string;
+  listen: string;
+  listenStop: string;
 }
 
 const fr: PrefsCopy = {
@@ -120,6 +125,11 @@ const fr: PrefsCopy = {
   syncEnable: 'Activer la synchronisation',
   syncDisable: 'Désactiver et effacer les copies du compte',
   syncDisableConfirm: 'Désactiver la synchronisation et supprimer les copies de tes discussions stockées sur ton compte ? Elles restent sur cet appareil.',
+  micStart: 'Dicter ma question',
+  micStop: 'Arrêter la dictée',
+  micDenied: 'Micro refusé : autorise-le dans les réglages du navigateur.',
+  listen: 'Écouter',
+  listenStop: 'Arrêter',
 };
 
 const en: PrefsCopy = {
@@ -184,6 +194,11 @@ const en: PrefsCopy = {
   syncEnable: 'Turn on sync',
   syncDisable: 'Turn off and delete the copies on the account',
   syncDisableConfirm: 'Turn off sync and delete the copies of your conversations stored on your account? They stay on this device.',
+  micStart: 'Dictate my question',
+  micStop: 'Stop dictation',
+  micDenied: 'Microphone blocked: allow it in your browser settings.',
+  listen: 'Listen',
+  listenStop: 'Stop',
 };
 
 export function prefsCopy(locale: Lang | string): PrefsCopy {

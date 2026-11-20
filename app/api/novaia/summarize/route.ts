@@ -4,6 +4,7 @@
 // Mêmes protections que la route de chat : corps limité, messages bornés, limite de débit par IP (en mémoire).
 
 import { summarizeChat, type ChatMessage } from '@/lib/novaia/provider';
+import { limite, messageLimite } from '@/lib/novaia/ratelimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,6 +42,11 @@ export async function POST(request: Request) {
   }
   if (limited(clientKey(request), Date.now())) {
     return Response.json({ error: 'Trop de requêtes.' }, { status: 429 });
+  }
+
+  const verdict = await limite(request, 'summarize');
+  if (verdict !== 'ok') {
+    return Response.json({ error: messageLimite(verdict, 'fr'), limite: verdict }, { status: 429 });
   }
 
   let body: { messages?: unknown; previous?: unknown };
