@@ -17,6 +17,7 @@ import { putDoc, loadConvDocs, deleteConvDocs, clearAllDocs } from '@/lib/novaia
 import { isPdf, openPdf, type OpenedPdf } from '@/lib/novaia/pdf';
 import { createClient } from '@/lib/supabase/client';
 import { dictationSupported, ttsSupported, startDictation, speak, stopSpeaking } from '@/lib/novaia/voice';
+import { startListener, unlockAudio, playServerTts, stopServerTts, type Listener } from '@/lib/novaia/voiceClient';
 import {
   MAX_CONVERSATIONS,
   MAX_MESSAGES,
@@ -107,6 +108,11 @@ const Icon = {
       <path d="M20 11.5l-8.2 8.2a5 5 0 01-7-7l8.6-8.6a3.4 3.4 0 014.8 4.8l-8.6 8.6a1.8 1.8 0 01-2.5-2.5l7.9-7.9" />
     </svg>
   ),
+  wave: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+      <path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" />
+    </svg>
+  ),
   mic: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="9" y="3" width="6" height="11" rx="3" />
@@ -138,6 +144,17 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const [listening, setListening] = useState(false);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const stopDictRef = useRef<(() => void) | null>(null);
+  const [voiceServer, setVoiceServer] = useState(false);
+  const [hands, setHands] = useState<'off' | 'listening' | 'thinking' | 'speaking'>('off');
+  const handsRef = useRef<'off' | 'listening' | 'thinking' | 'speaking'>('off');
+  const listenerRef = useRef<Listener | null>(null);
+  const awaitReplyRef = useRef<'no' | 'sent' | 'running'>('no');
+  const sendRef = useRef<(t: string) => void>(() => undefined);
+  const activeIdRef = useRef<string | null>(null);
+  const setHandsBoth = (v: 'off' | 'listening' | 'thinking' | 'speaking') => {
+    handsRef.current = v;
+    setHands(v);
+  };
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [steps, setSteps] = useState<ReplyState[]>([]); // ce que NovaIA fait en ce moment (recherche, calcul, réflexion, rédaction)
   const [drawer, setDrawer] = useState(false);
@@ -385,6 +402,12 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   useEffect(() => {
     mounted.current = true;
     setVoiceOk({ mic: dictationSupported(), tts: ttsSupported() });
+    fetch('/api/novaia/voice/status', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { enabled?: unknown } | null) => {
+        if (mounted.current && d && d.enabled === true) setVoiceServer(true);
+      })
+      .catch(() => undefined);
     setConvs(loadConversations());
     setReady(true);
     const flush = () => saveConversations(convsRef.current);
@@ -394,6 +417,8 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       abortRef.current?.abort();
       stopDictRef.current?.();
       stopSpeaking();
+      stopServerTts();
+      listenerRef.current?.stop();
       window.removeEventListener('pagehide', flush);
     };
   }, []);
@@ -663,6 +688,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       if (!content || loading) return;
       stopDictRef.current?.();
       stopSpeaking();
+      stopServerTts();
       setSpeakingId(null);
 
       let convId = activeId;
@@ -712,6 +738,96 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     },
     [activeId, convs, loading, ask, attachment, imageByConv, copy.imageDefaultQuestion, copy.imageAttached, consent, userId, pdf, pc.pdfPage]
   );
+  sendRef.current = send;
+  activeIdRef.current = activeId;
+
+  // ----- voix : lecture (voix du serveur si activée, sinon celle du navigateur) et mode mains libres
+
+  const speakAny = (text: string, onEnd: () => void) => {
+    const lg = locale === 'en' ? 'en' : 'fr';
+    const browser = () => (ttsSupported() ? speak(text, lg, onEnd) : onEnd());
+    if (!voiceServer) return browser();
+    void playServerTts(text, lg, onEnd).then((ok) => {
+      if (!ok) browser();
+    });
+  };
+
+  const isOff = () => handsRef.current === 'off';
+
+  const backToListening = () => {
+    if (isOff()) return;
+    awaitReplyRef.current = 'no';
+    listenerRef.current?.resume();
+    setHandsBoth('listening');
+  };
+
+  const stopHands = () => {
+    listenerRef.current?.stop();
+    listenerRef.current = null;
+    awaitReplyRef.current = 'no';
+    stopSpeaking();
+    stopServerTts();
+    setHandsBoth('off');
+  };
+
+  const onUtterance = async (wav: string) => {
+    if (handsRef.current !== 'listening') return;
+    listenerRef.current?.pause();
+    setHandsBoth('thinking');
+    let text = '';
+    try {
+      const r = await fetch('/api/novaia/voice/transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept-Language': locale === 'en' ? 'en' : 'fr' },
+        body: JSON.stringify({ audio: wav, locale: locale === 'en' ? 'en' : 'fr' }),
+      });
+      const d = (await r.json().catch(() => null)) as { text?: unknown; error?: unknown } | null;
+      if (d && typeof d.text === 'string') text = d.text.trim();
+      else if (d && typeof d.error === 'string' && r.status === 429) setAttachError(d.error);
+    } catch {
+      /* réseau : on retombe sur « rien entendu » */
+    }
+    if (isOff()) return;
+    if (!text) {
+      setAttachError(pc.handsNoSpeech);
+      return backToListening();
+    }
+    awaitReplyRef.current = 'sent';
+    sendRef.current(text);
+    window.setTimeout(() => {
+      if (awaitReplyRef.current === 'sent') backToListening(); // l'envoi n'a pas démarré (déjà en cours, texte vide…)
+    }, 3000);
+  };
+
+  const toggleHands = () => {
+    if (handsRef.current !== 'off') return stopHands();
+    unlockAudio();
+    stopSpeaking();
+    stopServerTts();
+    stopDictRef.current?.();
+    startListener({ onUtterance: (w) => void onUtterance(w) })
+      .then((l) => {
+        if (!mounted.current) return l.stop();
+        listenerRef.current = l;
+        setHandsBoth('listening');
+      })
+      .catch(() => setAttachError(pc.micDenied));
+  };
+
+  // quand la réponse est terminée : on la lit, puis on se remet à écouter
+  useEffect(() => {
+    if (handsRef.current === 'off') return;
+    if (loadingId !== null && awaitReplyRef.current === 'sent') awaitReplyRef.current = 'running';
+    if (loadingId === null && awaitReplyRef.current === 'running') {
+      awaitReplyRef.current = 'no';
+      const conv = convsRef.current.find((c) => c.id === activeIdRef.current);
+      const last = conv?.messages[conv.messages.length - 1];
+      if (!last || last.role !== 'assistant' || last.error) return backToListening();
+      setHandsBoth('speaking');
+      speakAny(last.content, backToListening);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingId]);
 
   const closePdf = () => {
     setPdf((cur) => {
@@ -1181,17 +1297,19 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   {m.role === 'assistant' && !m.ab && (
                     <div className="mt-1 flex items-center gap-3 px-1 text-[0.72rem] text-muted">
                       {!m.error && <CopyButton text={m.content} label={copy.copy} copiedLabel={copy.copied} />}
-                      {!m.error && voiceOk.tts && (
+                      {!m.error && (voiceOk.tts || voiceServer) && (
                         <button
                           type="button"
                           onClick={() => {
                             if (speakingId === m.id) {
                               stopSpeaking();
+                              stopServerTts();
                               setSpeakingId(null);
                               return;
                             }
                             setSpeakingId(m.id);
-                            speak(m.content, locale === 'en' ? 'en' : 'fr', () => {
+                            unlockAudio();
+                            speakAny(m.content, () => {
                               if (mounted.current) setSpeakingId((cur) => (cur === m.id ? null : cur));
                             });
                           }}
@@ -1254,6 +1372,17 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           }}
           className="border-t border-line bg-paper/60 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur md:p-3"
         >
+          {hands !== 'off' && (
+            <div role="status" className="mx-auto mb-2 flex max-w-3xl items-center justify-between gap-3 rounded-2xl border border-line bg-mist px-4 py-2.5 text-[0.9rem] text-ink">
+              <span className="flex items-center gap-2.5">
+                <span aria-hidden className={`h-2.5 w-2.5 rounded-full bg-accent ${hands === 'listening' ? 'animate-pulse' : hands === 'speaking' ? 'animate-ping' : 'opacity-60'}`} />
+                {hands === 'listening' ? pc.handsListening : hands === 'thinking' ? pc.handsThinking : pc.handsSpeaking}
+              </span>
+              <button type="button" onClick={stopHands} className="rounded-full border border-line px-3 py-1 text-[0.8rem] text-muted transition-colors hover:border-ink/40 hover:text-ink">
+                {pc.handsStop}
+              </button>
+            </div>
+          )}
           <div className="mx-auto w-full max-w-3xl">
             {notice && (
               <p className="mb-2 px-1 text-[0.78rem] text-muted" role="status">
@@ -1456,6 +1585,21 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   }`}
                 >
                   {Icon.mic}
+                </button>
+              )}
+              {voiceServer && (
+                <button
+                  type="button"
+                  disabled={loading && hands === 'off'}
+                  aria-label={hands !== 'off' ? pc.handsStop : pc.handsStart}
+                  aria-pressed={hands !== 'off'}
+                  title={hands !== 'off' ? pc.handsStop : pc.handsStart}
+                  onClick={toggleHands}
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-30 md:h-9 md:w-9 ${
+                    hands !== 'off' ? 'bg-ink text-paper' : 'text-muted hover:bg-mist hover:text-ink'
+                  }`}
+                >
+                  {Icon.wave}
                 </button>
               )}
               <label htmlFor="novaia-input" className="sr-only">

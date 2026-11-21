@@ -85,7 +85,7 @@ export function plainForSpeech(md: string): string {
     .trim();
 }
 
-function chunks(text: string): string[] {
+export function chunks(text: string): string[] {
   // Chrome coupe les longues lectures : on envoie des phrases courtes les unes après les autres.
   const parts = text.match(/[^.!?;:\n]+[.!?;:]?\s*/g) ?? [text];
   const out: string[] = [];

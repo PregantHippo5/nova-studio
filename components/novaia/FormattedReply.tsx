@@ -1,5 +1,7 @@
 import { splitBlocks, splitInline, splitText, type Inline } from '@/lib/novaia/format';
 import CodeBlock from '@/components/novaia/CodeBlock';
+import Chart from '@/components/novaia/Chart';
+import { parseChart } from '@/lib/novaia/chart';
 
 function InlineText({ text }: { text: string }) {
   return (
@@ -42,8 +44,10 @@ export default function FormattedReply({
 
   return (
     <div className="space-y-2.5">
-      {blocks.map((b, i) =>
-        b.type === 'code' ? (
+      {blocks.map((b, i) => {
+        const chart = b.type === 'code' && b.lang === 'nova-chart' ? parseChart(b.text) : null;
+        if (chart) return <Chart key={i} data={chart} />;
+        return b.type === 'code' ? (
           <CodeBlock key={i} code={b.text} lang={b.lang} copyLabel={copyLabel} copiedLabel={copiedLabel} />
         ) : (
           <div key={i} className="space-y-2.5">
@@ -71,8 +75,8 @@ export default function FormattedReply({
               )
             )}
           </div>
-        )
-      )}
+        );
+      })}
     </div>
   );
 }

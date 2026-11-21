@@ -61,6 +61,12 @@ export interface PrefsCopy {
   micDenied: string;
   listen: string;
   listenStop: string;
+  handsStart: string;
+  handsStop: string;
+  handsListening: string;
+  handsThinking: string;
+  handsSpeaking: string;
+  handsNoSpeech: string;
 }
 
 const fr: PrefsCopy = {
@@ -130,6 +136,12 @@ const fr: PrefsCopy = {
   micDenied: 'Micro refusé : autorise-le dans les réglages du navigateur.',
   listen: 'Écouter',
   listenStop: 'Arrêter',
+  handsStart: 'Mode vocal (mains libres)',
+  handsStop: 'Arrêter le mode vocal',
+  handsListening: 'Je t’écoute…',
+  handsThinking: 'Je réfléchis…',
+  handsSpeaking: 'Je parle…',
+  handsNoSpeech: 'Je n’ai rien entendu, réessaie.',
 };
 
 const en: PrefsCopy = {
@@ -199,6 +211,12 @@ const en: PrefsCopy = {
   micDenied: 'Microphone blocked: allow it in your browser settings.',
   listen: 'Listen',
   listenStop: 'Stop',
+  handsStart: 'Voice mode (hands-free)',
+  handsStop: 'Stop voice mode',
+  handsListening: 'Listening…',
+  handsThinking: 'Thinking…',
+  handsSpeaking: 'Speaking…',
+  handsNoSpeech: 'I didn’t hear anything, try again.',
 };
 
 export function prefsCopy(locale: Lang | string): PrefsCopy {
