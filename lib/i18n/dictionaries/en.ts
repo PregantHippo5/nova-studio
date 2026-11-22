@@ -7,7 +7,7 @@ const en: typeof fr = {
   meta: {
     title: 'Nova Studio — Projects, simulations and games',
     description:
-      'Nova Studio is two students in French preparatory classes building serious projects, interactive simulations to learn from, and games — free, made carefully.',
+      'Nova Studio builds serious software, interactive simulations to understand things, and games. Everything is free, documented and built in public.',
   },
   nav: {
     projects: 'Projects',
@@ -16,6 +16,9 @@ const en: typeof fr = {
     journal: 'Journal',
     roadmap: 'Roadmap',
     support: 'Support',
+    account: 'Account',
+    login: 'Log in',
+    menu: 'Menu',
     about: 'About',
   },
   status: {
@@ -25,83 +28,65 @@ const en: typeof fr = {
     Archived: 'Archived',
   },
   hero: {
-    badge: 'Made by two prépa students',
-    title: 'Serious projects, simulations to understand, games to unwind.',
-    lead: 'Nova Studio is two students in French preparatory classes (prépa) building real software, interactive simulations and a few games outside of class. Everything is free, and everything is built in the open.',
+    title: 'Tools built to last.',
+    lead: 'Serious software, simulations to understand, a few games to unwind. Free, documented, built in public.',
     explore: 'Explore projects',
-    learn: 'See the simulations',
-    scroll: 'Scroll',
+    novaia: 'Try NovaIA',
   },
-  marquee: ['Serious projects', 'Simulations', 'Games'],
   manifesto: {
-    eyebrow: 'The idea',
-    text: 'A base of serious projects, an educational side to understand by playing with things, and a side of games for fun. All of it built between prépa classes, free and in public.',
+    text: 'A base of serious projects, a side for understanding by doing, and a side of games to unwind.',
   },
   pillars: [
     {
       key: 'projects',
-      eyebrow: 'The foundation',
       title: 'Serious projects',
-      text: 'Software designed like real products: tracked, versioned, documented. It is the backbone of the studio, starting with SOCLE.',
+      text: 'Software designed like real products: tracked, versioned, documented. SOCLE is the first.',
       cta: 'See the projects',
     },
     {
       key: 'learn',
-      eyebrow: 'The educational side',
       title: 'Understand by doing',
-      text: 'Interactive simulations to watch a concept move instead of just reading about it: change a parameter, see what happens.',
-      cta: 'Explore Learn',
+      text: 'Interactive simulations: change a parameter, watch what moves.',
+      cta: 'Explore',
     },
     {
       key: 'games',
-      eyebrow: 'The fun side',
       title: 'Games to unwind',
-      text: 'Small, no-fuss games made for a break between study sessions. No ads, no in-app purchases.',
-      cta: 'See the games',
+      text: 'Small, no-fuss games. No ads, no in-app purchases.',
+      cta: 'Play',
     },
   ],
-  follow: {
-    eyebrow: 'Follow the studio',
-    title: 'We also show our work on video.',
-    text: 'Behind the scenes, progress and news: find us on our channels.',
-  },
   featured: {
-    eyebrow: 'Selected work',
     title: 'Featured projects',
-    description:
-      "A handful of things we're currently building or maintaining. Every project ships free, and every project keeps shipping.",
-    viewAll: 'View all projects →',
+    description: 'What we are building right now. Every project is free and keeps evolving.',
+    viewAll: 'All projects',
     viewProject: 'View project',
   },
-  principles: [
-    {
-      title: 'Built to last',
-      text: 'We would rather ship one thing well and maintain it for years than chase ten trends.',
-    },
-    {
-      title: 'Free, by design',
-      text: 'Every project is free to use. If you want to support the work, that is always optional.',
-    },
-    {
-      title: 'Made in the open',
-      text: 'Progress, decisions and setbacks are documented in the development journal as they happen.',
-    },
-  ],
+  novaiaTeaser: {
+    title: 'NovaIA answers clearly, and says when it does not know.',
+    text: 'A general-knowledge question, a calculation, an idea to talk through. NovaIA would rather admit doubt than invent an answer.',
+    button: 'Try NovaIA',
+    greeting: 'Hi. What are we looking for?',
+    question: 'A cyclist rides at 24 km/h for 2 h 30. How far do they go?',
+    answerLead: 'Distance = speed × time',
+    answerResult: '24 × 2.5 = 60 km',
+    placeholder: 'Ask a question…',
+  },
   journalTeaser: {
-    eyebrow: 'From the journal',
-    readMore: 'Read the journal →',
+    eyebrow: 'Latest journal entry',
+    readMore: 'Read the journal',
   },
   ctaSupport: {
     title: 'Nothing here is for sale.',
-    text: "Every project Nova Studio makes is free. If one of them is useful to you, supporting the studio helps keep it that way.",
+    text: 'Every project Nova Studio makes is free. Supporting it is always optional.',
     button: 'Support Nova Studio',
   },
   footer: {
-    tagline:
-      'Two prépa students building serious projects, simulations to learn from, and games — made carefully, shared freely.',
+    tagline: 'Serious software, simulations to understand, games to unwind. Free and built in public.',
     studio: 'Studio',
     elsewhere: 'Elsewhere',
     contact: 'Contact',
+    privacy: 'Privacy',
     copyright: 'Nova Studio. All rights reserved.',
     builtWith: 'Built with Next.js, in the open.',
   },
@@ -164,7 +149,7 @@ const en: typeof fr = {
     eyebrow: 'Why this exists',
     title: 'About Nova Studio',
     paragraphs: [
-      'Nova Studio started between prépa classes, from a simple frustration: most personal projects either stay unfinished or ship without the care they deserve. We are two students, and this studio exists to do the opposite — to treat our side projects with the same discipline as a real product.',
+      'Nova Studio started from a simple frustration: most personal projects either stay unfinished or ship without the care they deserve. This studio exists to do the opposite — to treat every project with the same discipline as a real product.',
       "There is no roadmap dictated by a business plan, no investors to answer to, and no ads to run. That freedom is the point. It means every decision — from a button's border radius to which project ships next — gets made for the same reason: because it makes the thing better.",
       'The studio rests on three pillars: a base of serious projects, an educational side with simulations to understand by doing, and a side of games for fun. It all comes from the same process: notice something worth making, spend the time it deserves, and share it plainly.',
     ],

@@ -30,23 +30,23 @@ export default function NovaiaPrefs({ c, locale, style, onStyle, loggedIn, conse
   };
 
   return (
-    <div className="absolute inset-0 z-[110] flex justify-end bg-ink/40" onClick={onClose}>
+    <div className="absolute inset-0 z-[110] flex justify-end bg-ink/30 backdrop-blur-[2px]" onClick={onClose}>
       <aside
         role="dialog"
         aria-modal="true"
         aria-label={c.title}
         onClick={(e) => e.stopPropagation()}
-        className="flex h-full w-full max-w-sm flex-col overflow-y-auto border-l border-line bg-paper p-5"
+        className="nv-glass ns-rise m-0 flex h-full w-full max-w-sm flex-col overflow-y-auto !bg-paper/90 p-6 sm:m-3 sm:h-[calc(100%-1.5rem)] sm:rounded-[28px]"
       >
         <div className="flex items-start justify-between gap-3">
-          <h2 className="font-display text-xl font-bold text-ink">{c.title}</h2>
-          <button type="button" onClick={onClose} className="rounded-full border border-line px-3 py-1 text-[0.78rem] text-muted hover:border-ink/40 hover:text-ink">
+          <h2 className="font-display text-2xl font-extrabold tracking-tight text-ink">{c.title}</h2>
+          <button type="button" onClick={onClose} className="rounded-full bg-ink/5 px-3.5 py-1 text-[0.8rem] font-medium text-ink/80 transition-colors hover:bg-ink/10 hover:text-ink">
             {c.close}
           </button>
         </div>
         <p className="mt-2 text-[0.85rem] leading-relaxed text-muted">{c.intro}</p>
 
-        <p className="mt-5 text-[0.7rem] font-medium uppercase tracking-[0.08em] text-muted">{c.presets}</p>
+        <p className="mt-5 text-[0.78rem] font-semibold text-muted">{c.presets}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {PRESETS.map((p) => {
             const active = sameStyle(style, p.style);
@@ -57,7 +57,7 @@ export default function NovaiaPrefs({ c, locale, style, onStyle, loggedIn, conse
                 onClick={() => onStyle({ ...p.style })}
                 aria-pressed={active}
                 className={`rounded-full border px-3.5 py-1.5 text-[0.82rem] transition-colors ${
-                  active ? 'border-ink bg-ink text-paper' : 'border-line bg-mist text-ink/85 hover:border-ink/40'
+                  active ? 'border-accent bg-accent text-white shadow-[0_8px_18px_-8px_rgb(var(--accent)/0.8)]' : 'border-line bg-mist/70 text-ink/85 hover:border-accent/50'
                 }`}
               >
                 {c.presetNames[p.id]}
@@ -80,7 +80,7 @@ export default function NovaiaPrefs({ c, locale, style, onStyle, loggedIn, conse
                       onClick={() => toggle(k, v)}
                       aria-pressed={active}
                       className={`rounded-full border px-3 py-1 text-[0.8rem] transition-colors ${
-                        active ? 'border-accent bg-accent-soft text-ink' : 'border-line text-muted hover:border-ink/40 hover:text-ink'
+                        active ? 'border-accent bg-accent-soft font-semibold text-accent-deep dark:text-accent' : 'border-line text-muted hover:border-accent/50 hover:text-ink'
                       }`}
                     >
                       {c.values[k][v]}
@@ -96,13 +96,13 @@ export default function NovaiaPrefs({ c, locale, style, onStyle, loggedIn, conse
           {c.reset}
         </button>
 
-        <div className="mt-6 rounded-2xl border border-line bg-mist p-4 text-[0.82rem] leading-relaxed text-ink/85">
+        <div className="mt-6 rounded-[20px] bg-mist/70 p-4 text-[0.82rem] leading-relaxed text-ink/85">
           {!loggedIn ? (
             <>
               <p>{c.signInToSave}</p>
               <a
                 href={`/${locale}/login?next=/${locale}/novaia`}
-                className="mt-3 inline-block rounded-full bg-ink px-4 py-1.5 text-[0.8rem] font-medium text-paper hover:opacity-85"
+                className="mt-3 inline-block rounded-full bg-accent px-4 py-1.5 text-[0.8rem] font-semibold text-white hover:opacity-90"
               >
                 {c.signIn}
               </a>
@@ -111,7 +111,7 @@ export default function NovaiaPrefs({ c, locale, style, onStyle, loggedIn, conse
             <>
               <p>{c.consentQuestion}</p>
               <div className="mt-3 flex gap-2">
-                <button type="button" onClick={() => onConsent(true)} className="rounded-full bg-ink px-4 py-1.5 text-[0.8rem] font-medium text-paper hover:opacity-85">
+                <button type="button" onClick={() => onConsent(true)} className="rounded-full bg-accent px-4 py-1.5 text-[0.8rem] font-semibold text-white hover:opacity-90">
                   {c.consentYes}
                 </button>
                 <button type="button" onClick={() => onConsent(false)} className="rounded-full border border-line px-4 py-1.5 text-[0.8rem] text-ink hover:border-ink/40">
@@ -143,8 +143,8 @@ export default function NovaiaPrefs({ c, locale, style, onStyle, loggedIn, conse
         </div>
 
         {loggedIn && (
-          <div className="mt-5 rounded-2xl border border-line p-4 text-[0.82rem] leading-relaxed text-ink/85">
-            <p className="text-[0.7rem] font-medium uppercase tracking-[0.08em] text-muted">{c.syncTitle}</p>
+          <div className="mt-5 rounded-[20px] border border-line/70 p-4 text-[0.82rem] leading-relaxed text-ink/85">
+            <p className="text-[0.78rem] font-semibold text-muted">{c.syncTitle}</p>
             <p className="mt-2">{syncOn ? c.syncOn : c.syncOff}</p>
             <button
               type="button"
@@ -152,7 +152,7 @@ export default function NovaiaPrefs({ c, locale, style, onStyle, loggedIn, conse
               className={
                 syncOn
                   ? 'mt-2 text-[0.78rem] text-muted underline-offset-2 hover:text-red-700 hover:underline'
-                  : 'mt-3 rounded-full bg-ink px-4 py-1.5 text-[0.8rem] font-medium text-paper hover:opacity-85'
+                  : 'mt-3 rounded-full bg-accent px-4 py-1.5 text-[0.8rem] font-semibold text-white hover:opacity-90'
               }
             >
               {syncOn ? c.syncDisable : c.syncEnable}
@@ -162,7 +162,7 @@ export default function NovaiaPrefs({ c, locale, style, onStyle, loggedIn, conse
 
         {loggedIn && consent === true && (
           <div className="mt-5">
-            <p className="text-[0.7rem] font-medium uppercase tracking-[0.08em] text-muted">{c.memoryTitle}</p>
+            <p className="text-[0.78rem] font-semibold text-muted">{c.memoryTitle}</p>
             {facts.length === 0 ? (
               <p className="mt-2 text-[0.8rem] leading-relaxed text-muted">{c.memoryEmpty}</p>
             ) : (

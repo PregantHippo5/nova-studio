@@ -17,9 +17,9 @@ export function generateMetadata({ params }: { params: { locale: string } }): Me
 const stages: RoadmapStage[] = ['Done', 'In Progress', 'Planned', 'Future'];
 
 const stageDot: Record<RoadmapStage, string> = {
-  Done: 'bg-emerald-500',
+  Done: 'bg-[rgb(var(--ok))]',
   'In Progress': 'bg-accent',
-  Planned: 'bg-amber-500',
+  Planned: 'bg-[rgb(var(--sun))]',
   Future: 'bg-muted',
 };
 
@@ -29,36 +29,32 @@ export default async function RoadmapPage({ params }: { params: { locale: string
   const roadmap = await getRoadmap();
 
   return (
-    <div className="py-20 md:py-28">
+    <div className="py-16 md:py-24">
       <Container>
-        <SectionHeading
-          eyebrow={dict.roadmapPage.eyebrow}
-          title={dict.roadmapPage.title}
-          description={dict.roadmapPage.description}
-        />
+        <SectionHeading title={dict.roadmapPage.title} description={dict.roadmapPage.description} />
 
-        <div className="mt-14 grid gap-8 md:grid-cols-4">
+        <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
           {stages.map((stage) => {
             const items = roadmap.filter((i) => i.stage === stage);
             return (
               <div key={stage}>
-                <div className="flex items-center gap-2 border-b border-line pb-3">
-                  <span className={`h-1.5 w-1.5 rounded-full ${stageDot[stage]}`} />
-                  <h2 className="font-mono text-xs uppercase tracking-[0.08em] text-muted">
+                <div className="flex items-center gap-2.5 pb-1">
+                  <span className={`h-2.5 w-2.5 rounded-full ${stageDot[stage]}`} />
+                  <h2 className="text-[0.95rem] font-extrabold tracking-tight text-ink">
                     {dict.roadmapPage.stages[stage]}
                   </h2>
-                  <span className="ml-auto text-xs text-muted">{items.length}</span>
+                  <span className="ml-auto rounded-full bg-ink/5 px-2 py-0.5 text-xs font-semibold text-muted">{items.length}</span>
                 </div>
                 <div className="mt-4 flex flex-col gap-3">
                   {items.map((item) => (
                     <div
                       key={item.id ?? item.project + item.title.en}
-                      className="rounded-xl border border-line p-4 transition-colors hover:border-ink/25"
+                      className="ns-card ns-card-link p-4 !rounded-[18px]"
                     >
-                      <p className="font-mono text-[0.65rem] uppercase tracking-[0.06em] text-muted">
+                      <p className="text-[0.75rem] font-semibold text-accent-deep dark:text-accent">
                         {item.project}
                       </p>
-                      <p className="mt-1.5 text-sm leading-relaxed text-ink/90">{item.title[locale]}</p>
+                      <p className="mt-1 text-sm leading-relaxed text-ink/90">{item.title[locale]}</p>
                     </div>
                   ))}
                 </div>
@@ -70,3 +66,4 @@ export default async function RoadmapPage({ params }: { params: { locale: string
     </div>
   );
 }
+

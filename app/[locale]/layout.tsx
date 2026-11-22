@@ -4,9 +4,6 @@ import Footer from '@/components/layout/Footer';
 import SetHtmlLang from '@/components/layout/SetHtmlLang';
 import ThemeScript from '@/components/fx/ThemeScript';
 import ThemeSync from '@/components/fx/ThemeSync';
-import Preloader from '@/components/fx/Preloader';
-import { display } from '@/lib/fonts';
-import ScrollProgress from '@/components/motion/ScrollProgress';
 import { locales, isLocale, defaultLocale, Locale } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 
@@ -47,11 +44,19 @@ export default function LocaleLayout({
       <ThemeScript />
       <SetHtmlLang locale={locale} />
       <ThemeSync />
-      <ScrollProgress />
-      <Preloader />
-      <div className={`${display.variable} flex flex-1 flex-col`}>
+      {/* La classe « site » délimite les pages publiques (l'admin en est exclu). */}
+      <div className="site relative flex flex-1 flex-col overflow-x-clip">
+        <div className="ns-ambient" aria-hidden="true" />
+        <a
+          href="#contenu"
+          className="sr-only z-[100] rounded-full bg-ink px-5 py-3 text-sm font-semibold text-paper focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        >
+          {locale === 'en' ? 'Skip to content' : 'Aller au contenu'}
+        </a>
         <Navbar locale={locale} dict={dict} />
-        <main className="flex-1">{children}</main>
+        <main id="contenu" className="relative z-10 flex-1">
+          {children}
+        </main>
         <Footer locale={locale} dict={dict} />
       </div>
     </>

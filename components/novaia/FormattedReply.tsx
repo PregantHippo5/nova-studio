@@ -3,6 +3,15 @@ import CodeBlock from '@/components/novaia/CodeBlock';
 import Chart from '@/components/novaia/Chart';
 import { parseChart } from '@/lib/novaia/chart';
 
+/** Une ligne courte qui ressemble à un calcul (« 24 × 2,5 = 60 km ») : affichée comme une formule, centrée. */
+function isFormula(t: string): boolean {
+  const s = t.trim();
+  if (s.length < 5 || s.length > 80 || s.includes('\n')) return false;
+  if (!/[=≈≠≤≥]/.test(s) || !/[\d√π∑∫]/.test(s)) return false;
+  if (/[.!?]$/.test(s) && s.split(' ').length > 8) return false;
+  return s.split(/\s+/).filter((w) => /^[A-Za-zÀ-ÿ]{4,}$/.test(w)).length <= 2;
+}
+
 function InlineText({ text }: { text: string }) {
   return (
     <>
@@ -14,7 +23,7 @@ function InlineText({ text }: { text: string }) {
         ) : s.type === 'italic' ? (
           <em key={j}>{s.text}</em>
         ) : s.type === 'code' ? (
-          <code key={j} className="rounded bg-mist px-1 py-0.5 font-mono text-[0.85em]">
+          <code key={j} className="rounded-md bg-accent-soft px-1.5 py-0.5 font-mono text-[0.85em] text-accent-deep dark:text-accent">
             {s.text}
           </code>
         ) : s.type === 'link' ? (
@@ -68,6 +77,10 @@ export default function FormattedReply({
                     </li>
                   ))}
                 </ol>
+              ) : isFormula(p.text) ? (
+                <p key={k} className="nv-formula rounded-2xl bg-accent-soft px-4 py-3 text-center text-[1.05rem] font-semibold tracking-tight text-ink">
+                  <InlineText text={p.text} />
+                </p>
               ) : (
                 <p key={k} className="whitespace-pre-wrap break-words leading-relaxed">
                   <InlineText text={p.text} />

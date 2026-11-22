@@ -37,7 +37,7 @@ export default async function ProjectPage({ params }: { params: { locale: string
   const release = await getLatestRelease(project.slug);
 
   return (
-    <div className="pb-28">
+    <div className="pb-24">
       <ProjectCoverMedia
         gradient={project.cover.gradient}
         videoUrl={project.cover.videoUrl}
@@ -46,8 +46,8 @@ export default async function ProjectPage({ params }: { params: { locale: string
         <Container className="pb-10">
           <Link
             href={`/${locale}/projects`}
-            className={`mb-6 inline-flex items-center gap-1.5 text-sm ${
-              project.cover.videoUrl ? 'text-white/70 hover:text-white' : 'text-ink/60 hover:text-ink'
+            className={`mb-6 inline-flex items-center gap-1.5 text-sm font-semibold ${
+              project.cover.videoUrl ? 'text-white/80 hover:text-white' : 'text-ink/60 hover:text-ink'
             }`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -57,15 +57,15 @@ export default async function ProjectPage({ params }: { params: { locale: string
           </Link>
           <div className="flex items-center gap-3">
             <span
-              className={`font-mono text-[0.7rem] uppercase tracking-[0.08em] ${
-                project.cover.videoUrl ? 'text-white/60' : 'text-ink/50'
+              className={`text-[0.85rem] font-semibold ${
+                project.cover.videoUrl ? 'text-white/70' : 'text-ink/60'
               }`}
             >
               {dict.projectsPage.categories[project.category]}
             </span>
             <StatusBadge status={project.status} dict={dict} />
           </div>
-          <h1 className="mt-3 text-display-2 font-semibold balance">{project.name}</h1>
+          <h1 className="mt-3 text-display-2 font-extrabold tracking-tight balance">{project.name}</h1>
         </Container>
       </ProjectCoverMedia>
 
@@ -83,13 +83,13 @@ export default async function ProjectPage({ params }: { params: { locale: string
 
           {project.features && (
             <div className="mt-12">
-              <h2 className="text-[0.9rem] font-semibold uppercase tracking-[0.06em] text-ink">
+              <h2 className="text-xl font-extrabold tracking-tight text-ink">
                 {dict.projectDetail.features}
               </h2>
               <ul className="mt-5 grid gap-3 sm:grid-cols-2">
                 {project.features[locale].map((f) => (
                   <li key={f} className="flex gap-3 text-sm leading-relaxed text-muted">
-                    <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-ink/40" />
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
                     {f}
                   </li>
                 ))}
@@ -99,15 +99,15 @@ export default async function ProjectPage({ params }: { params: { locale: string
 
           {project.history && (
             <div className="mt-16">
-              <h2 className="text-[0.9rem] font-semibold uppercase tracking-[0.06em] text-ink">
+              <h2 className="text-xl font-extrabold tracking-tight text-ink">
                 {dict.projectDetail.versionHistory}
               </h2>
-              <div className="mt-6 flex flex-col divide-y divide-line border-t border-line">
+              <div className="mt-6 flex flex-col gap-4">
                 {project.history.map((entry) => (
-                  <div key={entry.version} className="grid gap-3 py-8 sm:grid-cols-[140px_1fr]">
+                  <div key={entry.version} className="ns-card grid gap-3 p-6 sm:grid-cols-[140px_1fr]">
                     <div>
-                      <p className="font-mono text-sm font-medium text-ink">{entry.version}</p>
-                      <p className="mt-1 font-mono text-xs text-muted">
+                      <p className="text-base font-extrabold tracking-tight text-accent-deep dark:text-accent">{entry.version}</p>
+                      <p className="mt-1 text-xs text-muted">
                         {new Date(entry.date).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -127,7 +127,7 @@ export default async function ProjectPage({ params }: { params: { locale: string
                       ).map(([label, items]) =>
                         items ? (
                           <div key={label}>
-                            <p className="text-xs font-medium uppercase tracking-[0.06em] text-muted">
+                            <p className="text-[0.8rem] font-bold text-muted">
                               {label}
                             </p>
                             <ul className="mt-2 flex flex-col gap-1.5">
@@ -148,13 +148,13 @@ export default async function ProjectPage({ params }: { params: { locale: string
           )}
         </div>
 
-        <aside className="h-fit rounded-2xl border border-line p-6">
+        <aside className="ns-card h-fit p-6 lg:sticky lg:top-24">
           {release && (
             <div className="mb-6">
-              <p className="text-xs uppercase tracking-[0.06em] text-muted">
+              <p className="text-[0.8rem] font-semibold text-muted">
                 {dict.projectDetail.currentVersion}
               </p>
-              <p className="mt-1 font-mono text-sm text-ink">{release.version}</p>
+              <p className="mt-0.5 text-lg font-extrabold tracking-tight text-ink">{release.version}</p>
             </div>
           )}
 
@@ -165,7 +165,7 @@ export default async function ProjectPage({ params }: { params: { locale: string
                   <a
                     href={release.windowsDownloadUrl}
                     download
-                    className="inline-flex items-center justify-center rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-85"
+                    className="inline-flex items-center justify-center rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_20px_-10px_rgb(var(--accent)/0.8)] transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97]"
                   >
                     {dict.projectDetail.downloadWindows}
                   </a>
@@ -179,7 +179,7 @@ export default async function ProjectPage({ params }: { params: { locale: string
                   <a
                     href={release.macosDownloadUrl}
                     download
-                    className="inline-flex items-center justify-center rounded-full border border-line px-4 py-2.5 text-sm font-medium text-ink transition-all duration-300 ease-smooth hover:border-ink/40 hover:bg-mist"
+                    className="inline-flex items-center justify-center rounded-full border border-line bg-paper px-4 py-2.5 text-sm font-semibold text-ink transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/50 active:scale-[0.97]"
                   >
                     {dict.projectDetail.downloadMac}
                   </a>
@@ -191,7 +191,7 @@ export default async function ProjectPage({ params }: { params: { locale: string
               {(release.windowsDownloadUrl || release.macosDownloadUrl) && (
                 <Link
                   href={`/${locale}/install`}
-                  className="text-xs font-medium text-ink underline underline-offset-2"
+                  className="text-xs font-semibold text-accent-deep underline underline-offset-2 dark:text-accent"
                 >
                   {dict.projectDetail.installGuideLink}
                 </Link>
@@ -201,13 +201,13 @@ export default async function ProjectPage({ params }: { params: { locale: string
                   la décision d'architecture (Capacitor / React Native / natif). */}
               <span
                 aria-disabled="true"
-                className="inline-flex cursor-not-allowed items-center justify-center rounded-full border border-line px-4 py-2.5 font-mono text-xs uppercase tracking-[0.06em] text-muted"
+                className="inline-flex cursor-not-allowed items-center justify-center rounded-full bg-ink/5 px-4 py-2.5 text-[0.8rem] font-semibold text-muted"
               >
                 {dict.projectDetail.downloadAndroid} · {dict.common.comingSoon}
               </span>
               <span
                 aria-disabled="true"
-                className="inline-flex cursor-not-allowed items-center justify-center rounded-full border border-line px-4 py-2.5 font-mono text-xs uppercase tracking-[0.06em] text-muted"
+                className="inline-flex cursor-not-allowed items-center justify-center rounded-full bg-ink/5 px-4 py-2.5 text-[0.8rem] font-semibold text-muted"
               >
                 {dict.projectDetail.downloadIos} · {dict.common.comingSoon}
               </span>
@@ -223,7 +223,7 @@ export default async function ProjectPage({ params }: { params: { locale: string
                   <span
                     key={link.label}
                     aria-disabled="true"
-                    className="inline-flex cursor-not-allowed items-center justify-center rounded-full border border-line px-4 py-2.5 font-mono text-xs uppercase tracking-[0.06em] text-muted"
+                    className="inline-flex cursor-not-allowed items-center justify-center rounded-full bg-ink/5 px-4 py-2.5 text-[0.8rem] font-semibold text-muted"
                   >
                     {link.label} · {dict.common.comingSoon}
                   </span>
@@ -234,10 +234,10 @@ export default async function ProjectPage({ params }: { params: { locale: string
                     target={!link.download && link.href.startsWith('http') ? '_blank' : undefined}
                     rel="noreferrer"
                     download={link.download ? true : undefined}
-                    className={`inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-300 ease-smooth ${
+                    className={`inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] ${
                       link.kind === 'primary'
-                        ? 'bg-ink text-paper hover:opacity-85'
-                        : 'border border-line text-ink hover:border-ink/40 hover:bg-mist'
+                        ? 'bg-accent text-white shadow-[0_10px_20px_-10px_rgb(var(--accent)/0.8)]'
+                        : 'border border-line bg-paper text-ink hover:border-accent/50'
                     }`}
                   >
                     {link.label}

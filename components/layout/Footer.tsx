@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import Container from '@/components/ui/Container';
+import ThemeToggle from '@/components/layout/ThemeToggle';
+import NovaStar from '@/components/brand/NovaStar';
 import { Locale } from '@/lib/i18n/config';
 import { Dictionary } from '@/lib/i18n/dictionaries';
 import { CONTACT_EMAIL, SOCIALS } from '@/lib/site';
@@ -25,14 +27,15 @@ export default function Footer({ locale, dict }: { locale: Locale; dict: Diction
     },
   ];
 
+  const linkClass =
+    'relative inline-block text-sm text-muted transition-colors duration-200 hover:text-ink after:absolute after:-bottom-0.5 after:left-0 after:h-px after:w-0 after:bg-ink after:transition-[width] after:duration-300 after:content-[""] hover:after:w-full';
+
   return (
-    <footer className="border-t border-line">
-      <Container className="grid gap-12 py-16 md:grid-cols-[1.3fr_1fr_1fr]">
+    <footer className="relative z-10 border-t border-line">
+      <Container className="grid gap-12 py-16 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
-          <Link href={`/${locale}`} className="flex items-center gap-2 text-[0.95rem] font-semibold">
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-ink text-paper text-[0.7rem]">
-              N
-            </span>
+          <Link href={`/${locale}`} className="flex items-center gap-2.5 text-[1.02rem] font-extrabold tracking-tight">
+            <NovaStar size={26} className="ns-logo-star" />
             Nova Studio
           </Link>
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">{dict.footer.tagline}</p>
@@ -40,25 +43,23 @@ export default function Footer({ locale, dict }: { locale: Locale; dict: Diction
 
         {columns.map((col) => (
           <div key={col.title}>
-            <p className="font-mono text-[0.7rem] uppercase tracking-[0.1em] text-muted">
-              {col.title}
-            </p>
+            <p className="text-sm font-bold text-ink">{col.title}</p>
             <ul className="mt-4 flex flex-col gap-3">
               {col.links.map((link) => {
                 const external = link.href.startsWith('http');
-                const className = 'text-sm text-ink/80 transition-colors hover:text-ink';
+                const mail = link.href.startsWith('mailto:');
                 return (
                   <li key={link.label}>
-                    {external ? (
-                      <a href={link.href} target="_blank" rel="noopener noreferrer" className={className}>
-                        {link.label}
-                      </a>
-                    ) : link.href.startsWith('mailto:') ? (
-                      <a href={link.href} className={className}>
+                    {external || mail ? (
+                      <a
+                        href={link.href}
+                        {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                        className={linkClass}
+                      >
                         {link.label}
                       </a>
                     ) : (
-                      <Link href={link.href} className={className}>
+                      <Link href={link.href} className={linkClass}>
                         {link.label}
                       </Link>
                     )}
@@ -70,14 +71,17 @@ export default function Footer({ locale, dict }: { locale: Locale; dict: Diction
         ))}
       </Container>
 
-      <Container className="flex flex-col gap-2 border-t border-line py-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-        <p>© {new Date().getFullYear()} {dict.footer.copyright}</p>
-        <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+      <Container className="flex flex-col gap-4 border-t border-line py-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
+        <p>
+          © {new Date().getFullYear()} {dict.footer.copyright}
+        </p>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
           <Link href={`/${locale}/privacy`} className="transition-colors hover:text-ink">
-            {locale === 'en' ? 'Privacy' : 'Confidentialité'}
+            {dict.footer.privacy}
           </Link>
           <span>{dict.footer.builtWith}</span>
-        </p>
+          <ThemeToggle />
+        </div>
       </Container>
     </footer>
   );

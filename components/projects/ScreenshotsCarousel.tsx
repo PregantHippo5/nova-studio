@@ -37,7 +37,7 @@ export default function ScreenshotsCarousel({ screenshots }: { screenshots: Proj
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="relative aspect-[16/9] overflow-hidden rounded-2xl border border-line bg-mist">
+      <div className="ns-card relative aspect-[16/9] overflow-hidden !rounded-[24px]">
         {screenshots.map((shot, i) => (
           <div
             key={shot.url + i}
@@ -71,7 +71,7 @@ export default function ScreenshotsCarousel({ screenshots }: { screenshots: Proj
             >
               <span
                 className={`h-1.5 rounded-full transition-all duration-300 ease-smooth ${
-                  i === active ? 'w-6 bg-ink' : 'w-1.5 bg-ink/25 group-hover:bg-ink/40'
+                  i === active ? 'w-6 bg-accent' : 'w-1.5 bg-ink/25 group-hover:bg-ink/40'
                 }`}
               />
             </button>
@@ -81,3 +81,4 @@ export default function ScreenshotsCarousel({ screenshots }: { screenshots: Proj
     </div>
   );
 }
+

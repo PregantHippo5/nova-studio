@@ -1,185 +1,75 @@
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
-import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
 import Container from '@/components/ui/Container';
 import Button from '@/components/ui/Button';
-import Magnetic from '@/components/fx/Magnetic';
-import HeroScene from '@/components/home/HeroScene';
+import NovaStar from '@/components/brand/NovaStar';
 import { Locale } from '@/lib/i18n/config';
 import { Dictionary } from '@/lib/i18n/dictionaries';
 
-const WORDS = ['Nova', 'Studio'];
-const EASE = [0.16, 1, 0.3, 1] as const;
+const STAR = 'M50 0 C55 34, 66 45, 100 50 C66 55, 55 66, 50 100 C45 66, 34 55, 0 50 C34 45, 45 34, 50 0 Z';
 
-/** Vrai quand l'intro (préchargeur) est terminée ou déjà vue, avec un filet de sécurité de 5 s. */
-function useIntroDone() {
-  const [done, setDone] = useState(false);
-  useEffect(() => {
-    if (document.documentElement.classList.contains('nova-seen')) {
-      setDone(true);
-      return;
-    }
-    const finish = () => setDone(true);
-    window.addEventListener('nova:intro-done', finish, { once: true });
-    const timer = window.setTimeout(finish, 5000);
-    return () => {
-      window.removeEventListener('nova:intro-done', finish);
-      window.clearTimeout(timer);
-    };
-  }, []);
-  return done;
-}
-
+/** Accueil : un titre, une phrase, deux actions, et la mascotte. Une seule séquence d'entrée, pas d'effet au défilement. */
 export default function Hero({ locale, dict }: { locale: Locale; dict: Dictionary }) {
-  const ref = useRef<HTMLElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const reduce = useReducedMotion();
-  const ready = useIntroDone();
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
-
-  const titleY = useTransform(scrollYProgress, [0, 1], reduce ? [0, 0] : [0, 140]);
-  const titleScale = useTransform(scrollYProgress, [0, 1], reduce ? [1, 1] : [1, 0.92]);
-  const titleOpacity = useTransform(scrollYProgress, [0, 0.8], reduce ? [1, 1] : [1, 0]);
-  const sceneY = useTransform(scrollYProgress, [0, 1], reduce ? [0, 0] : [0, 90]);
-
-  // Les lettres proches du curseur se soulèvent et s'illuminent (via une variable CSS, sans recalcul de mise en page).
-  useEffect(() => {
-    const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-    const title = titleRef.current;
-    if (!fine || reduce || !title) return;
-    const letters = Array.from(title.querySelectorAll<HTMLElement>('[data-letter]'));
-    let frame = 0;
-    let px = -9999;
-    let py = -9999;
-
-    const paint = () => {
-      frame = 0;
-      for (const el of letters) {
-        const r = el.getBoundingClientRect();
-        const d = Math.hypot(px - (r.left + r.width / 2), py - (r.top + r.height / 2));
-        const p = Math.max(0, 1 - d / 260);
-        el.style.setProperty('--p', (p * p).toFixed(3));
-      }
-    };
-    const onMove = (event: PointerEvent) => {
-      px = event.clientX;
-      py = event.clientY;
-      if (!frame) frame = requestAnimationFrame(paint);
-    };
-    const onLeave = () => {
-      px = -9999;
-      py = -9999;
-      if (!frame) frame = requestAnimationFrame(paint);
-    };
-    window.addEventListener('pointermove', onMove, { passive: true });
-    document.addEventListener('pointerleave', onLeave);
-    return () => {
-      window.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerleave', onLeave);
-      if (frame) cancelAnimationFrame(frame);
-    };
-  }, [reduce]);
-
-  let index = 0;
-
   return (
-    <section ref={ref} className="relative flex min-h-[100svh] items-center overflow-hidden pb-24 pt-28">
-      <motion.div aria-hidden="true" style={{ y: sceneY }} className="absolute inset-0">
-        <div className="hero-grid absolute inset-0 opacity-60" />
-        <HeroScene />
-      </motion.div>
-
-      <Container className="relative">
-        <motion.div style={{ y: titleY, scale: titleScale, opacity: titleOpacity }} className="origin-left">
-          <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            animate={ready ? { opacity: 1, y: 0 } : undefined}
-            transition={{ duration: 0.7, ease: EASE }}
-            className="mb-6 inline-flex items-center gap-2 rounded-full border border-line bg-paper/60 px-3 py-1 font-mono text-[0.7rem] text-muted backdrop-blur"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            {dict.hero.badge}
-          </motion.p>
-
-          <h1
-            ref={titleRef}
-            aria-label="Nova Studio"
-            className="font-display font-extrabold leading-[0.86] tracking-[-0.04em] text-ink"
-            style={{ fontSize: 'clamp(4.5rem, 12.5vw, 13rem)' }}
-          >
-            {WORDS.map((word, w) => (
-              <span key={word} aria-hidden="true" className="block">
-                {word.split('').map((char) => {
-                  const i = index++;
-                  return (
-                    <span key={i} data-letter className="hero-letter inline-block">
-                      <motion.span
-                        className="inline-block"
-                        initial={{ opacity: 0, y: '0.35em', filter: 'blur(14px)' }}
-                        animate={ready ? { opacity: 1, y: 0, filter: 'blur(0px)' } : undefined}
-                        transition={{ duration: 0.9, delay: 0.06 * i + w * 0.08, ease: EASE }}
-                      >
-                        {char}
-                      </motion.span>
-                    </span>
-                  );
-                })}
-              </span>
-            ))}
-          </h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={ready ? { opacity: 1, y: 0 } : undefined}
-            transition={{ duration: 0.8, delay: 0.7, ease: EASE }}
-            className="mt-8 max-w-xl text-[1.15rem] font-medium leading-snug text-ink balance"
-          >
+    <section className="relative pb-20 pt-12 md:pb-28 md:pt-20">
+      <Container className="grid items-center gap-14 md:grid-cols-[1.25fr_1fr]">
+        <div>
+          <h1 className="ns-rise text-[clamp(2.6rem,6.2vw,4.7rem)] font-extrabold leading-[1.03] tracking-[-0.025em] text-ink balance">
             {dict.hero.title}
-          </motion.p>
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={ready ? { opacity: 1, y: 0 } : undefined}
-            transition={{ duration: 0.8, delay: 0.85, ease: EASE }}
-            className="mt-3 max-w-xl leading-relaxed text-muted"
+          </h1>
+          <p
+            className="ns-rise mt-6 max-w-md text-[1.1rem] leading-relaxed text-muted"
+            style={{ animationDelay: '0.1s' }}
           >
             {dict.hero.lead}
-          </motion.p>
+          </p>
+          <div className="ns-rise mt-9 flex flex-wrap items-center gap-3" style={{ animationDelay: '0.2s' }}>
+            <Button href={`/${locale}/projects`} arrow>
+              {dict.hero.explore}
+            </Button>
+            <Button href={`/${locale}/novaia`} variant="secondary">
+              {dict.hero.novaia}
+            </Button>
+          </div>
+        </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={ready ? { opacity: 1, y: 0 } : undefined}
-            transition={{ duration: 0.8, delay: 1, ease: EASE }}
-            className="mt-9 flex flex-wrap items-center gap-5"
-          >
-            <Magnetic>
-              <Button href={`/${locale}/projects`} variant="primary">
-                {dict.hero.explore}
-              </Button>
-            </Magnetic>
-            <Magnetic>
-              <Button href={`/${locale}/learn`} variant="secondary">
-                {dict.hero.learn}
-              </Button>
-            </Magnetic>
-          </motion.div>
-        </motion.div>
+        {/* La mascotte : elle flotte, ses yeux suivent le curseur, un point orbite autour d'elle. */}
+        <div className="ns-rise flex justify-center md:justify-end" style={{ animationDelay: '0.3s' }}>
+          <div className="relative h-[300px] w-[300px]" aria-hidden="true">
+            <div className="absolute inset-0" style={{ transform: 'rotate(-12deg)' }}>
+              <svg width="300" height="300" viewBox="0 0 300 300" className="absolute inset-0">
+                <ellipse
+                  cx="150"
+                  cy="150"
+                  rx="150"
+                  ry="52"
+                  fill="none"
+                  stroke="rgb(var(--c-learn))"
+                  strokeOpacity="0.35"
+                  strokeWidth="1.5"
+                />
+              </svg>
+              <span className="ns-orbit-dot" />
+            </div>
+
+            <div className="ns-float absolute inset-0 flex items-center justify-center">
+              <NovaStar size={176} face track />
+            </div>
+
+            <svg
+              width="26"
+              height="26"
+              viewBox="0 0 100 100"
+              className="ns-twinkle absolute right-6 top-8"
+              style={{ fill: 'rgb(var(--sun))' }}
+            >
+              <path d={STAR} />
+            </svg>
+            <span
+              className="ns-float absolute bottom-10 left-5 h-5 w-5 rounded-md"
+              style={{ background: 'rgb(var(--c-games))', transform: 'rotate(14deg)', animationDelay: '-2s' }}
+            />
+          </div>
+        </div>
       </Container>
-
-      <motion.div
-        aria-hidden="true"
-        initial={{ opacity: 0 }}
-        animate={ready ? { opacity: 1 } : undefined}
-        transition={{ delay: 1.6, duration: 0.8 }}
-        className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 font-mono text-[0.65rem] text-muted md:flex"
-      >
-        {dict.hero.scroll}
-        <motion.span
-          animate={reduce ? undefined : { y: [0, 6, 0] }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-          className="block h-6 w-px bg-muted"
-        />
-      </motion.div>
     </section>
   );
 }

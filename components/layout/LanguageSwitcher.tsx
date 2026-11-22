@@ -15,15 +15,32 @@ export default function LanguageSwitcher({ locale }: { locale: Locale }) {
     router.push(segments.join('/') || `/${next}`);
   };
 
+  const index = Math.max(0, locales.indexOf(locale));
+
   return (
-    <div className="flex items-center rounded-full border border-line p-0.5 font-mono text-[0.7rem] uppercase tracking-wide">
+    <div
+      role="group"
+      aria-label="Language"
+      className="relative inline-grid h-9 items-center rounded-full border border-line bg-mist p-0.5 text-[0.8rem] font-bold"
+      style={{ gridTemplateColumns: `repeat(${locales.length}, minmax(0, 1fr))` }}
+    >
+      {/* La pastille glisse d'une langue à l'autre. */}
+      <span
+        aria-hidden="true"
+        className="absolute bottom-0.5 left-0.5 top-0.5 rounded-full bg-ink transition-transform duration-300 ease-smooth"
+        style={{
+          width: `calc((100% - 4px) / ${locales.length})`,
+          transform: `translateX(${index * 100}%)`,
+        }}
+      />
       {locales.map((l) => (
         <button
           key={l}
+          type="button"
           onClick={() => switchTo(l)}
-          aria-current={l === locale}
-          className={`rounded-full px-2 py-1 transition-colors duration-200 ${
-            l === locale ? 'bg-ink text-paper' : 'text-muted hover:text-ink'
+          aria-pressed={l === locale}
+          className={`relative z-10 rounded-full px-3 py-1.5 uppercase leading-none transition-colors duration-300 ${
+            l === locale ? 'text-paper' : 'text-muted hover:text-ink'
           }`}
         >
           {l}

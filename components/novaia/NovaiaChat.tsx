@@ -1,7 +1,8 @@
 'use client';
 
+import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import NovaiaMark from '@/components/novaia/NovaiaMark';
 import type { Locale } from '@/lib/i18n/config';
 import type { NovaiaCopy } from '@/lib/novaia/copy';
 import FormattedReply from '@/components/novaia/FormattedReply';
@@ -40,37 +41,20 @@ const MAX_LEN = 600; // même limite que le Space de NovaIA (au-delà, le messag
 const HISTORY_SENT = 12;
 const MAX_SENT_CONTENT = 1000; // limite de la route : un message plus long ferait refuser toute la requête
 
-/** Petit noyau qui respire : rappel discret du « core » du prototype, dans la DA du site. */
+/** Mascotte : placeholder dans NovaiaMark.tsx, à remplacer quand l'asset définitif existe. */
 function Orb({ size }: { size: number }) {
-  const reduce = useReducedMotion();
-
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }} aria-hidden="true">
-      <motion.span
-        className="absolute inset-0 rounded-full bg-accent/25 blur-md"
-        animate={reduce ? undefined : { scale: [0.9, 1.2, 0.9], opacity: [0.45, 0.9, 0.45] }}
-        transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.span
-        className="absolute inset-[16%] border border-accent/40 bg-accent-soft"
-        style={{ borderRadius: '50%' }}
-        animate={
-          reduce
-            ? undefined
-            : {
-                borderRadius: [
-                  '50% 50% 50% 50% / 50% 50% 50% 50%',
-                  '58% 42% 46% 54% / 43% 57% 48% 52%',
-                  '41% 59% 57% 43% / 49% 51% 59% 41%',
-                  '50% 50% 50% 50% / 50% 50% 50% 50%',
-                ],
-              }
-        }
-        transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-      />
-    </div>
+    <span className="ns-float inline-block shrink-0" style={{ width: size, height: size }}>
+      <NovaiaMark size={size} />
+    </span>
   );
 }
+
+const QUEUE_MAX = 3;
+const nvText = (locale: Locale) =>
+  locale === 'en'
+    ? { queued: 'Queued', cancel: 'Cancel', queueHint: 'Will be sent when NovaIA finishes', style: 'Style', voice: 'Voice mode', hello: 'What are we working on?' }
+    : { queued: 'En file', cancel: 'Annuler', queueHint: 'Part dès que NovaIA a fini', style: 'Style', voice: 'Mode vocal', hello: 'On travaille sur quoi ?' };
 
 const Icon = {
   menu: (
@@ -158,6 +142,10 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [steps, setSteps] = useState<ReplyState[]>([]); // ce que NovaIA fait en ce moment (recherche, calcul, réflexion, rédaction)
   const [drawer, setDrawer] = useState(false);
+  const [queue, setQueue] = useState<string[]>([]); // messages écrits pendant qu'une réponse arrive : partent à la suite
+  const nt = nvText(locale);
+  const [portalReady, setPortalReady] = useState(false);
+  useEffect(() => setPortalReady(true), []);
 
   // --- compte, style de réponse et consentement (les préférences ne sont gardées sur le compte qu'avec l'accord de la personne)
   const pc = prefsCopy(locale);
@@ -685,7 +673,13 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       const known = activeId ? imageByConv[activeId] : undefined;
       const image = (attachment ?? known)?.dataUrl; // nouvelle image, sinon celle déjà active dans la conversation
       const content = text.trim().slice(0, MAX_LEN) || (attachment ? copy.imageDefaultQuestion : '');
-      if (!content || loading) return;
+      if (!content) return;
+      if (loading) {
+        if (attachment) return; // une pièce jointe ne se met pas en file
+        setQueue((q) => (q.length < QUEUE_MAX ? [...q, content] : q));
+        setInput('');
+        return;
+      }
       stopDictRef.current?.();
       stopSpeaking();
       stopServerTts();
@@ -740,6 +734,14 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   );
   sendRef.current = send;
   activeIdRef.current = activeId;
+
+  // dès que la réponse est terminée, le premier message en file part
+  useEffect(() => {
+    if (loadingId !== null || queue.length === 0 || !ready) return;
+    const [next, ...rest] = queue;
+    setQueue(rest);
+    sendRef.current(next);
+  }, [loadingId, queue, ready]);
 
   // ----- voix : lecture (voix du serveur si activée, sinon celle du navigateur) et mode mains libres
 
@@ -872,6 +874,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   };
 
   const stop = () => {
+    setQueue([]);
     abortRef.current?.abort();
     setLoadingId(null);
     textareaRef.current?.focus();
@@ -891,6 +894,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
   const newChat = () => {
     if (loading) return;
+    setQueue([]);
     setActiveId(null);
     setInput('');
     setAttachment(null);
@@ -966,15 +970,17 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const empty = messages.length === 0;
   const activeImage = attachment ?? (activeId ? imageByConv[activeId] : undefined);
   const imageLost = !activeImage && messages.some((m) => m.image);
-  const canSend = (input.trim().length > 0 || attachment !== null) && !loading;
+  const canSend = input.trim().length > 0 ? !attachment || !loading : attachment !== null && !loading;
   const lastMessage = messages[messages.length - 1];
   // une réponse à une image ne se régénère pas : l'image n'est pas conservée
   const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user');
   const canRegenerate = !loading && lastMessage?.role === 'assistant' && !lastUserMessage?.image;
   const headerTitle = active ? active.title : copy.untitled;
 
-  return (
-    <div className="fixed inset-0 z-[100] flex h-[100dvh] w-screen overflow-hidden bg-paper text-ink">
+  const ui = (
+    <div className="nv-bg fixed inset-0 z-[100] flex h-[100dvh] w-screen overflow-hidden text-ink">
+      <span className="nv-blob -left-24 top-1/3 h-72 w-72 bg-[rgb(255_190_150/0.45)] dark:bg-[rgb(120_80_200/0.25)]" aria-hidden="true" />
+      <span className="nv-blob -right-16 bottom-10 h-80 w-80 bg-[rgb(150_175_255/0.45)] dark:bg-[rgb(60_90_251/0.25)]" style={{ animationDelay: '-4s' }} aria-hidden="true" />
       {/* Voile derrière le tiroir (mobile) */}
       {drawer && (
         <button
@@ -987,7 +993,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
       {/* Barre latérale : conversations */}
       <aside
-        className={`absolute inset-y-0 left-0 z-30 flex w-80 max-w-[88%] flex-col border-r border-line bg-mist transition-transform duration-200 md:static md:w-72 md:max-w-none md:translate-x-0 ${
+        className={`nv-glass absolute inset-y-0 left-0 z-30 flex w-80 max-w-[88%] flex-col transition-transform duration-200 md:static md:m-3 md:mr-0 md:w-72 md:max-w-none md:translate-x-0 md:rounded-[26px] ${
           drawer ? 'translate-x-0' : '-translate-x-full'
         }`}
         aria-label={copy.sidebarTitle}
@@ -997,12 +1003,12 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
             ← {copy.backToSite}
           </a>
         </div>
-        <div className="flex items-center gap-2 border-b border-line p-3">
+        <div className="flex items-center gap-2 p-3">
           <button
             type="button"
             onClick={newChat}
             disabled={loading}
-            className="flex flex-1 items-center gap-2 rounded-xl border border-line bg-mist px-3 py-3 text-[0.95rem] font-medium md:py-2 md:text-[0.85rem] text-ink transition-colors hover:border-ink/40 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex flex-1 items-center gap-2 rounded-full bg-accent px-4 py-3 text-[0.95rem] font-semibold text-white shadow-[0_10px_22px_-10px_rgb(var(--accent)/0.7)] transition-all hover:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 md:py-2.5 md:text-[0.88rem]"
           >
             {Icon.plus}
             <span className="truncate">{copy.newChat}</span>
@@ -1016,7 +1022,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
           {groups.map((g) => (
             <div key={g.key} className="mb-4">
-              <p className="px-2 pb-1 font-mono text-[0.62rem] uppercase tracking-[0.08em] text-muted">{g.label}</p>
+              <p className="px-2.5 pb-1 text-[0.74rem] font-semibold text-muted">{g.label}</p>
               <ul className="space-y-0.5">
                 {g.items.map((c) => {
                   const isActive = c.id === activeId;
@@ -1034,7 +1040,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                             if (e.key === 'Escape') setRenamingId(null);
                           }}
                           aria-label={copy.rename}
-                          className="w-full rounded-lg border border-ink/40 bg-paper px-2.5 py-2 text-[0.85rem] text-ink outline-none"
+                          className="w-full rounded-lg border border-accent bg-paper px-2.5 py-2 text-[0.85rem] text-ink outline-none"
                         />
                       ) : (
                         <>
@@ -1044,7 +1050,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                             onDoubleClick={() => startRename(c)}
                             aria-current={isActive ? 'true' : undefined}
                             className={`block w-full truncate rounded-lg px-3 py-3 pr-20 text-left text-[0.95rem] md:px-2.5 md:py-2 md:pr-14 md:text-[0.85rem] transition-colors ${
-                              isActive ? 'bg-mist font-medium text-ink' : 'text-ink/75 hover:bg-mist/70'
+                              isActive ? 'bg-accent-soft font-semibold text-ink' : 'text-ink/75 hover:bg-ink/5'
                             }`}
                           >
                             {c.title}
@@ -1080,7 +1086,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           ))}
         </nav>
 
-        <div className="flex items-center justify-between gap-2 border-t border-line px-3 py-2.5 text-[0.7rem] text-muted">
+        <div className="flex items-center justify-between gap-2 border-t border-line/70 px-4 py-3 text-[0.7rem] text-muted">
           <span className="leading-snug">{copy.savedLocally}</span>
           {convs.length > 0 && (
             <button
@@ -1097,7 +1103,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
       {/* Zone de conversation */}
       <section className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center gap-3 border-b border-line bg-paper/60 px-2 py-2 backdrop-blur md:px-4 md:py-3">
+        <div className="flex items-center gap-3 px-2 py-2 md:px-5 md:py-3">
           <button
             type="button"
             onClick={() => setDrawer(true)}
@@ -1108,17 +1114,17 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           </button>
           <a
             href={`/${locale}`}
-            className="hidden shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[0.78rem] text-muted transition-colors hover:border-ink/40 hover:text-ink sm:flex"
+            className="nv-glass hidden shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[0.8rem] font-medium text-ink/80 transition-colors hover:text-ink sm:flex"
           >
             <span aria-hidden>←</span>
             {copy.backToSite}
           </a>
-          <span className="hidden sm:block"><Orb size={30} /></span>
+          <span className="hidden sm:block"><Orb size={34} /></span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[1.02rem] font-semibold leading-tight text-ink md:text-[0.95rem] md:leading-none">
+            <p className="truncate text-[1.02rem] font-extrabold leading-tight tracking-tight text-ink md:text-[1rem] md:leading-none">
               {active ? headerTitle : copy.assistantName}
             </p>
-            <p className="mt-1 hidden truncate font-mono text-[0.62rem] sm:block uppercase leading-snug tracking-[0.08em] text-muted">
+            <p className="mt-1 hidden truncate text-[0.74rem] leading-snug text-muted sm:block">
               {active ? copy.assistantName : copy.previewBadge}
             </p>
           </div>
@@ -1128,27 +1134,27 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
               onClick={() => setDocsOpen(true)}
               aria-label={pc.docsButton}
               title={pc.docsButton}
-              className="flex h-11 min-w-[2.75rem] shrink-0 items-center justify-center gap-1.5 rounded-full border border-line px-3 text-[0.78rem] text-muted transition-colors hover:border-ink/40 hover:text-ink md:h-auto md:min-w-0 md:py-1.5"
+              className="nv-glass flex h-11 min-w-[2.75rem] shrink-0 items-center justify-center gap-1.5 rounded-full px-3.5 text-[0.8rem] font-medium text-ink/80 transition-colors hover:text-ink md:h-auto md:min-w-0 md:py-1.5"
             >
               {Icon.clip}
               <span className="hidden sm:inline">{pc.docsButton}</span>
               {Object.values(docsByConv[active.id] ?? {}).filter((d) => d.fresh).length > 0 && (
-                <span className="font-mono text-[0.68rem]">{Object.values(docsByConv[active.id] ?? {}).filter((d) => d.fresh).length}</span>
+                <span className="text-[0.72rem] font-bold text-accent">{Object.values(docsByConv[active.id] ?? {}).filter((d) => d.fresh).length}</span>
               )}
             </button>
           )}
           <button
             type="button"
             onClick={() => setPrefsOpen(true)}
-            className="h-11 shrink-0 rounded-full border border-line px-3.5 text-[0.78rem] text-muted transition-colors hover:border-ink/40 hover:text-ink md:h-auto md:py-1.5"
+            className="nv-glass h-11 shrink-0 rounded-full px-4 text-[0.8rem] font-semibold text-ink/80 transition-colors hover:text-ink md:h-auto md:py-1.5"
           >
-            {pc.open}
+            {nt.style}
             {Object.keys(style).length > 0 && <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent align-middle" aria-hidden />}
           </button>
           {!userId && (
             <a
               href={`/${locale}/login?next=/${locale}/novaia`}
-              className="hidden shrink-0 rounded-full bg-ink px-3.5 py-1.5 text-[0.78rem] font-medium text-paper hover:opacity-85 sm:block"
+              className="hidden shrink-0 rounded-full bg-ink px-4 py-1.5 text-[0.8rem] font-semibold text-paper transition-opacity hover:opacity-85 sm:block"
             >
               {pc.signIn}
             </a>
@@ -1157,7 +1163,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
             type="button"
             onClick={newChat}
             disabled={loading || empty}
-            className="hidden shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[0.78rem] text-muted transition-colors hover:border-ink/40 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 sm:flex md:hidden"
+            className="nv-glass hidden shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[0.8rem] font-medium text-ink/80 transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 sm:flex md:hidden"
           >
             {Icon.plus}
             {copy.newChat}
@@ -1174,9 +1180,9 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
           <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col space-y-4">
             {empty && (
               <div className="flex flex-1 flex-col items-center justify-center gap-5 py-6 text-center">
-                <span className="scale-75 sm:scale-100"><Orb size={88} /></span>
+                <span className="scale-75 sm:scale-100"><Orb size={104} /></span>
                 <div>
-                  <h3 className="font-display text-[1.7rem] font-bold leading-tight tracking-tight text-ink sm:text-4xl">{copy.greeting}</h3>
+                  <h3 className="font-display text-[1.7rem] font-extrabold leading-tight tracking-tight text-ink balance sm:text-4xl">{copy.greeting}</h3>
                   <p className="mx-auto mt-2 max-w-md text-[0.95rem] leading-relaxed text-muted sm:mt-3">{copy.emptyText}</p>
                 </div>
                 <div className="grid w-full max-w-2xl gap-2.5 sm:grid-cols-3">
@@ -1186,7 +1192,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                       type="button"
                       onClick={() => send(s)}
                       disabled={loading}
-                      className="rounded-2xl border border-line bg-mist px-4 py-3.5 text-left text-[0.95rem] leading-snug md:text-[0.85rem] text-ink/85 transition-colors hover:border-ink/40 hover:bg-paper disabled:opacity-50"
+                      className="nv-glass rounded-[20px] px-4 py-4 text-left text-[0.95rem] font-medium leading-snug text-ink/90 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_22px_40px_-18px_rgb(60_90_251/0.35)] active:scale-[0.98] disabled:opacity-50 md:text-[0.88rem]"
                     >
                       {s}
                     </button>
@@ -1211,8 +1217,8 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                       <p className="mb-2 text-[0.8rem] text-muted">{pc.abTitle}</p>
                       <div className="grid gap-3 sm:grid-cols-2">
                         {(['a', 'b'] as const).map((w) => (
-                          <div key={w} className="flex flex-col rounded-2xl border border-line bg-mist p-4">
-                            <p className="mb-2 font-mono text-[0.65rem] uppercase tracking-[0.08em] text-muted">{w === 'a' ? pc.abA : pc.abB}</p>
+                          <div key={w} className="nv-glass flex flex-col rounded-[20px] p-4">
+                            <p className="mb-2 text-[0.78rem] font-semibold text-accent">{w === 'a' ? pc.abA : pc.abB}</p>
                             <div className="flex-1 text-[0.95rem] leading-[1.65] text-ink">
                               <FormattedReply text={w === 'a' ? m.content : m.ab!.textB} copyLabel={copy.copy} copiedLabel={copy.copied} />
                             </div>
@@ -1220,7 +1226,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                               type="button"
                               disabled={loading}
                               onClick={() => activeId && resolveAb(activeId, m.id, w)}
-                              className="mt-3 self-start rounded-full border border-line bg-paper px-3.5 py-1.5 text-[0.8rem] text-ink transition-colors hover:border-ink disabled:opacity-50"
+                              className="mt-3 self-start rounded-full bg-accent px-4 py-1.5 text-[0.8rem] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                             >
                               {pc.abPick}
                             </button>
@@ -1242,10 +1248,10 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   <div
                     className={`break-words text-[0.98rem] leading-[1.7] ${
                       m.role === 'user'
-                        ? 'max-w-[88%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-ink px-4 py-2.5 text-paper'
+                        ? 'max-w-[88%] whitespace-pre-wrap rounded-[22px] rounded-br-md bg-accent px-4 py-2.5 text-white shadow-[0_12px_24px_-14px_rgb(var(--accent)/0.8)]'
                         : m.error
-                        ? 'max-w-full italic text-muted'
-                        : 'w-full max-w-full text-ink'
+                        ? 'nv-glass max-w-full rounded-[20px] px-4 py-3 italic text-muted'
+                        : 'nv-glass w-full max-w-full rounded-[22px] rounded-tl-md px-5 py-4 text-ink'
                     }`}
                   >
                     {m.image && (() => {
@@ -1285,7 +1291,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                           href={s.url}
                           target="_blank"
                           rel="noopener noreferrer nofollow"
-                          className="max-w-[14rem] truncate rounded-full border border-line px-2.5 py-0.5 transition-colors hover:border-ink hover:text-ink"
+                          className="nv-glass max-w-[14rem] truncate rounded-full px-3 py-0.5 transition-colors hover:text-accent"
                           title={s.title}
                         >
                           {s.title}
@@ -1330,9 +1336,10 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
             })}
 
             {loadingHere && (
-              <div className="flex justify-start">
+              <div className="flex items-start justify-start gap-3">
+                <Orb size={34} />
                 <div
-                  className="min-w-[11rem] py-1 text-[0.85rem] text-muted"
+                  className="nv-glass min-w-[11rem] rounded-[20px] rounded-tl-md px-4 py-3 text-[0.85rem] text-muted"
                   role="status"
                   aria-live="polite"
                   aria-label={copy.thinking}
@@ -1352,16 +1359,34 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                       {[0, 1, 2].map((i) => (
                         <span
                           key={i}
-                          className="h-1.5 w-1.5 animate-pulse rounded-full bg-muted"
+                          className="ns-typing-dot h-1.5 w-1.5 rounded-full bg-accent"
                           style={{ animationDelay: `${i * 180}ms` }}
                         />
                       ))}
                     </span>
-                    <span>{steps.length ? stepLabel(steps[steps.length - 1]) : copy.thinking}…</span>
+                    <span>{(steps.length ? stepLabel(steps[steps.length - 1]) : copy.thinking).replace(/[….]+$/, '')}…</span>
                   </div>
                 </div>
               </div>
             )}
+
+            {queue.map((q, i) => (
+              <div key={`${i}-${q}`} className="flex flex-col items-end gap-1">
+                <div className="max-w-[88%] whitespace-pre-wrap break-words rounded-[22px] rounded-br-md border border-dashed border-accent/50 bg-accent/10 px-4 py-2.5 text-[0.98rem] leading-[1.7] text-ink/80">
+                  {q}
+                </div>
+                <div className="flex items-center gap-2 px-1 text-[0.72rem] text-muted">
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-accent">
+                    <span className="ns-live inline-block h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+                    {nt.queued}
+                  </span>
+                  <span className="hidden sm:inline">{nt.queueHint}</span>
+                  <button type="button" onClick={() => setQueue((cur) => cur.filter((_, k) => k !== i))} className="underline-offset-2 hover:text-ink hover:underline">
+                    {nt.cancel}
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -1370,15 +1395,17 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
             e.preventDefault();
             send(input);
           }}
-          className="border-t border-line bg-paper/60 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur md:p-3"
+          className="p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:px-5 md:pb-4 md:pt-2"
         >
           {hands !== 'off' && (
-            <div role="status" className="mx-auto mb-2 flex max-w-3xl items-center justify-between gap-3 rounded-2xl border border-line bg-mist px-4 py-2.5 text-[0.9rem] text-ink">
-              <span className="flex items-center gap-2.5">
-                <span aria-hidden className={`h-2.5 w-2.5 rounded-full bg-accent ${hands === 'listening' ? 'animate-pulse' : hands === 'speaking' ? 'animate-ping' : 'opacity-60'}`} />
+            <div role="status" className="nv-glass mx-auto mb-2 flex max-w-3xl items-center justify-between gap-3 rounded-[20px] px-4 py-2.5 text-[0.9rem] text-ink">
+              <span className="flex items-center gap-3">
+                <span aria-hidden className={`nv-bars flex h-5 items-center gap-[3px] text-accent ${hands === 'thinking' ? 'opacity-50' : ''}`}>
+                  <span /><span /><span /><span /><span />
+                </span>
                 {hands === 'listening' ? pc.handsListening : hands === 'thinking' ? pc.handsThinking : pc.handsSpeaking}
               </span>
-              <button type="button" onClick={stopHands} className="rounded-full border border-line px-3 py-1 text-[0.8rem] text-muted transition-colors hover:border-ink/40 hover:text-ink">
+              <button type="button" onClick={stopHands} className="rounded-full bg-ink px-3.5 py-1 text-[0.8rem] font-semibold text-paper transition-opacity hover:opacity-85">
                 {pc.handsStop}
               </button>
             </div>
@@ -1390,12 +1417,12 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
               </p>
             )}
             {factSuggestion && consent === true && (
-              <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-line bg-mist px-4 py-2.5 text-[0.82rem] text-ink/85">
+              <div className="nv-glass mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[20px] px-4 py-2.5 text-[0.82rem] text-ink/85">
                 <span className="min-w-0 flex-1">
                   {pc.factAsk} <span className="font-medium text-ink">« {factSuggestion} »</span>
                 </span>
                 <span className="flex shrink-0 gap-2">
-                  <button type="button" onClick={() => void saveFact()} className="rounded-full bg-ink px-3.5 py-1 text-[0.78rem] font-medium text-paper hover:opacity-85">
+                  <button type="button" onClick={() => void saveFact()} className="rounded-full bg-accent px-3.5 py-1 text-[0.78rem] font-semibold text-white hover:opacity-90">
                     {pc.factYes}
                   </button>
                   <button type="button" onClick={() => setFactSuggestion(null)} className="rounded-full border border-line px-3.5 py-1 text-[0.78rem] text-ink hover:border-ink/40">
@@ -1405,10 +1432,10 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
               </div>
             )}
             {userId && consent === null && !prefsOpen && (
-              <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-line bg-mist px-4 py-2.5 text-[0.82rem] text-ink/85">
+              <div className="nv-glass mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[20px] px-4 py-2.5 text-[0.82rem] text-ink/85">
                 <span className="min-w-0 flex-1">{pc.consentQuestion}</span>
                 <span className="flex shrink-0 gap-2">
-                  <button type="button" onClick={() => changeConsent(true)} className="rounded-full bg-ink px-3.5 py-1 text-[0.78rem] font-medium text-paper hover:opacity-85">
+                  <button type="button" onClick={() => changeConsent(true)} className="rounded-full bg-accent px-3.5 py-1 text-[0.78rem] font-semibold text-white hover:opacity-90">
                     {pc.consentYes}
                   </button>
                   <button type="button" onClick={() => changeConsent(false)} className="rounded-full border border-line px-3.5 py-1 text-[0.78rem] text-ink hover:border-ink/40">
@@ -1480,7 +1507,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                 {!activeImage && !attachError && imageLost && <span>{copy.imageLost}</span>}
               </div>
             )}
-            <div className="flex items-end gap-1 rounded-3xl border border-line bg-mist py-1.5 pl-1.5 pr-1.5 shadow-sm md:gap-2 md:px-4 md:py-2.5 transition-colors focus-within:border-ink/40 focus-within:bg-paper">
+            <div className="nv-glass flex items-end gap-1 rounded-[28px] py-1.5 pl-1.5 pr-1.5 transition-shadow focus-within:shadow-[0_0_0_2px_rgb(var(--accent)/0.45),0_18px_40px_-20px_rgb(60_90_251/0.4)] md:gap-2 md:px-2.5 md:py-2">
               <input
                 ref={fileRef}
                 type="file"
@@ -1521,14 +1548,14 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   aria-haspopup="menu"
                   aria-expanded={menuOpen}
                   title={`${copy.attach} — ${copy.attachHint}`}
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-muted md:h-9 md:w-9 transition-colors hover:bg-mist hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-ink/70 transition-colors hover:bg-ink/5 hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 md:h-10 md:w-10"
                 >
-                  {Icon.clip}
+                  <span className={`inline-block transition-transform duration-200 ${menuOpen ? 'rotate-45' : ''}`}>{Icon.plus}</span>
                 </button>
                 {menuOpen && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} aria-hidden />
-                    <div role="menu" className="absolute bottom-12 left-0 z-40 w-56 overflow-hidden rounded-2xl border border-line bg-paper py-1.5 shadow-lg">
+                    <div role="menu" className="nv-glass ns-pop absolute bottom-14 left-0 z-40 w-60 overflow-hidden rounded-[22px] py-1.5 !bg-paper/90">
                       {[
                         { label: pc.menuImage, ref: fileRef },
                         { label: pc.menuDoc, ref: docRef },
@@ -1542,7 +1569,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                             setMenuOpen(false);
                             o.ref.current?.click();
                           }}
-                          className="block w-full px-4 py-3 text-left text-[0.95rem] text-ink md:py-2 md:text-[0.88rem] transition-colors hover:bg-mist"
+                          className="block w-full px-4 py-3 text-left text-[0.95rem] font-medium text-ink transition-colors hover:bg-accent-soft md:py-2.5 md:text-[0.9rem]"
                         >
                           {o.label}
                         </button>
@@ -1581,25 +1608,10 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                     }
                   }}
                   className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-30 md:h-9 md:w-9 ${
-                    listening ? 'animate-pulse bg-ink text-paper' : 'text-muted hover:bg-mist hover:text-ink'
+                    listening ? 'animate-pulse bg-accent text-white' : 'text-ink/70 hover:bg-ink/5 hover:text-ink'
                   }`}
                 >
                   {Icon.mic}
-                </button>
-              )}
-              {voiceServer && (
-                <button
-                  type="button"
-                  disabled={loading && hands === 'off'}
-                  aria-label={hands !== 'off' ? pc.handsStop : pc.handsStart}
-                  aria-pressed={hands !== 'off'}
-                  title={hands !== 'off' ? pc.handsStop : pc.handsStart}
-                  onClick={toggleHands}
-                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-30 md:h-9 md:w-9 ${
-                    hands !== 'off' ? 'bg-ink text-paper' : 'text-muted hover:bg-mist hover:text-ink'
-                  }`}
-                >
-                  {Icon.wave}
                 </button>
               )}
               <label htmlFor="novaia-input" className="sr-only">
@@ -1625,17 +1637,30 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                 }}
                 rows={1}
                 placeholder={activeImage ? copy.imagePlaceholder : copy.placeholder}
-                className="max-h-40 flex-1 resize-none bg-transparent py-2.5 text-base md:py-1.5 md:text-[0.92rem] text-ink outline-none placeholder:text-muted"
+                className="max-h-40 flex-1 resize-none bg-transparent py-2.5 text-base text-ink outline-none focus-visible:!outline-none placeholder:text-muted md:py-2 md:text-[0.95rem]"
               />
-              {loading ? (
+              {loading && !input.trim() ? (
                 <button
                   type="button"
                   onClick={stop}
                   aria-label={copy.stop}
                   title={copy.stop}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line text-ink md:h-9 md:w-9 transition-colors hover:bg-mist"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink text-paper transition-transform hover:scale-105 active:scale-95 md:h-10 md:w-10"
                 >
                   {Icon.stop}
+                </button>
+              ) : voiceServer && !input.trim() && !attachment ? (
+                <button
+                  type="button"
+                  onClick={toggleHands}
+                  aria-label={hands !== 'off' ? pc.handsStop : pc.handsStart}
+                  aria-pressed={hands !== 'off'}
+                  title={hands !== 'off' ? pc.handsStop : pc.handsStart}
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all hover:scale-105 active:scale-95 md:h-10 md:w-10 ${
+                    hands !== 'off' ? 'bg-ink text-paper' : 'bg-accent-soft text-accent'
+                  }`}
+                >
+                  {Icon.wave}
                 </button>
               ) : (
                 <button
@@ -1643,7 +1668,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   disabled={!canSend}
                   aria-label={copy.send}
                   title={copy.send}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink text-paper md:h-9 md:w-9 transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-30"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white shadow-[0_8px_18px_-8px_rgb(var(--accent)/0.8)] transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none disabled:hover:scale-100 md:h-10 md:w-10"
                 >
                   {Icon.send}
                 </button>
@@ -1653,7 +1678,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
             <div className="mt-1 hidden items-center justify-between gap-3 px-1 text-[0.7rem] text-muted sm:flex md:mt-2">
               <span>{copy.footnote}</span>
               {input.length > MAX_LEN * 0.8 && (
-                <span className="shrink-0 font-mono">
+                <span className="shrink-0 tabular-nums">
                   {input.length}/{MAX_LEN}
                 </span>
               )}
@@ -1667,7 +1692,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
             role="dialog"
             aria-label={pc.docsTitle}
             onClick={(e) => e.stopPropagation()}
-            className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-line bg-paper p-5 shadow-xl sm:rounded-3xl"
+            className="nv-glass max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-t-[28px] !bg-paper/90 p-5 sm:rounded-[28px]"
           >
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="text-[1rem] font-semibold text-ink">{pc.docsTitle}</h2>
@@ -1726,4 +1751,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       )}
     </div>
   );
+
+  // le chat est sorti de la page (portail) pour passer au-dessus du menu et du pied de page du site
+  return portalReady ? createPortal(ui, document.body) : null;
 }

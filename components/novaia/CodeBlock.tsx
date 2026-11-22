@@ -26,12 +26,12 @@ export default function CodeBlock({
   const tokens = highlight(code, lang);
 
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-mist">
-      <div className="flex items-center justify-between border-b border-line px-3 py-1.5 font-mono text-[0.68rem] uppercase tracking-wide text-muted">
+    <div className="overflow-hidden rounded-2xl border border-line/70 bg-paper/70">
+      <div className="flex items-center justify-between border-b border-line/70 px-4 py-2 text-[0.74rem] font-semibold text-muted">
         <span>{lang || 'code'}</span>
         <CopyButton text={code} label={copyLabel} copiedLabel={copiedLabel} className="normal-case tracking-normal" />
       </div>
-      <pre className="overflow-x-auto whitespace-pre px-3 py-2.5 font-mono text-[0.82rem] leading-relaxed text-ink">
+      <pre className="overflow-x-auto whitespace-pre px-4 py-3 font-mono text-[0.82rem] leading-relaxed text-ink">
         <code>
           {tokens.map((t, i) =>
             t.kind === 'plain' ? <span key={i}>{t.text}</span> : (

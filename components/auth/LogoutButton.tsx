@@ -16,9 +16,10 @@ export default function LogoutButton({ locale, label }: { locale: string; label:
   return (
     <button
       onClick={handleLogout}
-      className="rounded-full bg-ink py-2.5 text-sm font-medium text-paper transition-opacity duration-200 hover:opacity-85"
+      className="rounded-full bg-ink py-2.5 text-sm font-semibold text-paper transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97]"
     >
       {label}
     </button>
   );
 }
+

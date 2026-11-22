@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Container from '@/components/ui/Container';
+import NovaStar from '@/components/brand/NovaStar';
 import { Locale } from '@/lib/i18n/config';
 import { Dictionary } from '@/lib/i18n/dictionaries';
 import { createClient } from '@/lib/supabase/client';
@@ -61,20 +62,24 @@ export default function LoginForm({ locale, dict }: { locale: Locale; dict: Dict
 
   return (
     <div className="flex min-h-[70vh] items-center py-16">
-      <Container className="mx-auto max-w-sm">
-        <h1 className="text-display-3 font-semibold text-ink">{dict.loginPage.title}</h1>
+      <Container className="mx-auto max-w-md">
+        <div className="ns-card p-8">
+        <span className="ns-float mb-5 inline-block">
+          <NovaStar size={56} face track />
+        </span>
+        <h1 className="text-display-3 font-extrabold tracking-tight text-ink">{dict.loginPage.title}</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">{dict.loginPage.subtitle}</p>
 
         <div className="mt-8 flex gap-2">
           <button
             onClick={() => handleOAuth('google')}
-            className="flex-1 rounded-full border border-line py-2.5 text-sm text-ink transition-colors duration-200 hover:bg-mist"
+            className="flex-1 rounded-full border border-line bg-paper py-2.5 text-sm font-semibold text-ink transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/50 active:scale-[0.97]"
           >
             Google
           </button>
           <button
             onClick={() => handleOAuth('discord')}
-            className="flex-1 rounded-full border border-line py-2.5 text-sm text-ink transition-colors duration-200 hover:bg-mist"
+            className="flex-1 rounded-full border border-line bg-paper py-2.5 text-sm font-semibold text-ink transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/50 active:scale-[0.97]"
           >
             Discord
           </button>
@@ -95,7 +100,7 @@ export default function LoginForm({ locale, dict }: { locale: Locale; dict: Dict
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mb-4 w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-sm text-ink focus:outline-2 focus:outline-accent"
+            className="mb-4 w-full rounded-xl border border-line bg-paper px-3.5 py-3 text-sm text-ink transition-shadow focus:outline-none focus:ring-2 focus:ring-accent/60"
           />
           <label className="mb-1.5 block text-[0.8rem] font-medium text-ink">
             {dict.loginPage.passwordLabel}
@@ -106,16 +111,16 @@ export default function LoginForm({ locale, dict }: { locale: Locale; dict: Dict
             minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mb-5 w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-sm text-ink focus:outline-2 focus:outline-accent"
+            className="mb-5 w-full rounded-xl border border-line bg-paper px-3.5 py-3 text-sm text-ink transition-shadow focus:outline-none focus:ring-2 focus:ring-accent/60"
           />
 
-          {error && <p className="mb-4 text-xs text-red-600">{error}</p>}
-          {message && <p className="mb-4 text-xs text-emerald-700">{message}</p>}
+          {error && <p className="mb-4 text-xs text-red-600 dark:text-red-400">{error}</p>}
+          {message && <p className="mb-4 text-xs text-emerald-700 dark:text-emerald-400">{message}</p>}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-full bg-ink py-2.5 text-sm font-medium text-paper transition-opacity duration-200 hover:opacity-85 disabled:opacity-50"
+            className="w-full rounded-full bg-accent py-3 text-sm font-semibold text-white shadow-[0_10px_20px_-10px_rgb(var(--accent)/0.8)] transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0"
           >
             {loading ? '...' : mode === 'login' ? dict.loginPage.signIn : dict.loginPage.signUp}
           </button>
@@ -123,11 +128,13 @@ export default function LoginForm({ locale, dict }: { locale: Locale; dict: Dict
 
         <button
           onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-          className="mt-5 w-full text-center text-xs text-muted hover:text-ink"
+          className="mt-5 w-full text-center text-sm text-muted transition-colors hover:text-ink"
         >
           {mode === 'login' ? dict.loginPage.noAccount : dict.loginPage.haveAccount}
         </button>
+        </div>
       </Container>
     </div>
   );
 }
+

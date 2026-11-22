@@ -1,13 +1,11 @@
 import Link from 'next/link';
 import Container from '@/components/ui/Container';
-import Hero from '@/components/home/Hero';
-import Marquee from '@/components/home/Marquee';
-import Manifesto from '@/components/home/Manifesto';
-import StickyShowcase from '@/components/home/StickyShowcase';
-import FeaturedProjects from '@/components/home/FeaturedProjects';
-import FollowStrip from '@/components/home/FollowStrip';
-import Reveal from '@/components/motion/Reveal';
 import Button from '@/components/ui/Button';
+import NovaStar from '@/components/brand/NovaStar';
+import Hero from '@/components/home/Hero';
+import PillarsGrid from '@/components/home/PillarsGrid';
+import FeaturedProjects from '@/components/home/FeaturedProjects';
+import NovaiaTeaser from '@/components/home/NovaiaTeaser';
 import { getProjects, getJournalEntries } from '@/lib/supabase/queries';
 import { isLocale, defaultLocale, Locale } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/dictionaries';
@@ -23,60 +21,51 @@ export default async function Home({ params }: { params: { locale: string } }) {
   return (
     <>
       <Hero locale={locale} dict={dict} />
-      <Marquee words={dict.marquee} />
-      <Manifesto dict={dict} />
-      <StickyShowcase pillars={dict.pillars} locale={locale} />
+      <PillarsGrid locale={locale} dict={dict} />
       <FeaturedProjects locale={locale} dict={dict} projects={projects} />
-
-      <section className="border-t border-line py-24">
-        <Container>
-          <div className="grid gap-12 md:grid-cols-3">
-            {dict.principles.map((p, i) => (
-              <Reveal key={p.title} delay={i * 0.1}>
-                <h3 className="text-[1.05rem] font-semibold text-ink">{p.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-muted">{p.text}</p>
-              </Reveal>
-            ))}
-          </div>
-        </Container>
-      </section>
-
-      <FollowStrip dict={dict} />
+      <NovaiaTeaser locale={locale} dict={dict} />
 
       {latest && (
-        <section className="border-t border-line py-24">
+        <section className="py-10 md:py-14">
           <Container>
-            <Reveal className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
-              <div>
-                <p className="mb-3 font-mono text-[0.7rem] uppercase tracking-[0.14em] text-accent">
-                  {dict.journalTeaser.eyebrow}
-                </p>
-                <Link href={`/${locale}/journal/${latest.slug}`} className="group block max-w-xl">
-                  <h2 className="text-display-3 font-semibold text-ink transition-colors group-hover:text-accent">
-                    {latest.title[locale]}
-                  </h2>
-                  <p className="mt-3 text-[0.95rem] leading-relaxed text-muted">{latest.excerpt[locale]}</p>
-                </Link>
+            <Link
+              href={`/${locale}/journal/${latest.slug}`}
+              className="ns-card ns-card-link group flex flex-col gap-4 p-7 md:flex-row md:items-center md:justify-between md:p-9"
+            >
+              <div className="max-w-2xl">
+                <p className="text-sm font-bold text-accent">{dict.journalTeaser.eyebrow}</p>
+                <h2 className="mt-2 text-display-3 font-extrabold tracking-tight text-ink balance">
+                  {latest.title[locale]}
+                </h2>
+                <p className="mt-3 leading-relaxed text-muted">{latest.excerpt[locale]}</p>
               </div>
-              <Button href={`/${locale}/journal`} variant="ghost">
+              <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-ink">
                 {dict.journalTeaser.readMore}
-              </Button>
-            </Reveal>
+                <span className="ns-arrow" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
+                </span>
+              </span>
+            </Link>
           </Container>
         </section>
       )}
 
-      <section className="border-t border-line py-24">
+      <section className="py-16 md:py-24">
         <Container>
-          <Reveal className="flex flex-col items-center gap-6 text-center">
-            <h2 className="text-display-2 font-semibold text-ink balance max-w-2xl">
+          <div className="flex flex-col items-center gap-5 rounded-[28px] bg-accent-soft px-6 py-16 text-center md:py-20">
+            <div className="ns-float">
+              <NovaStar size={52} face />
+            </div>
+            <h2 className="max-w-xl text-display-3 font-extrabold tracking-tight text-ink balance">
               {dict.ctaSupport.title}
             </h2>
-            <p className="max-w-md text-[1.05rem] leading-relaxed text-muted">{dict.ctaSupport.text}</p>
-            <Button href={`/${locale}/support`} variant="primary" className="mt-2">
+            <p className="max-w-md leading-relaxed text-muted">{dict.ctaSupport.text}</p>
+            <Button href={`/${locale}/support`} className="mt-2">
               {dict.ctaSupport.button}
             </Button>
-          </Reveal>
+          </div>
         </Container>
       </section>
     </>

@@ -5,7 +5,7 @@ const fr = {
   meta: {
     title: 'Nova Studio — Projets, simulations et jeux',
     description:
-      'Nova Studio, ce sont deux étudiants de prépa qui construisent des projets sérieux, des simulations interactives pour apprendre et des jeux — gratuits, faits avec soin.',
+      'Nova Studio crée des logiciels sérieux, des simulations interactives pour comprendre et des jeux. Tout est gratuit, documenté et développé en public.',
   },
   nav: {
     projects: 'Projets',
@@ -14,6 +14,9 @@ const fr = {
     journal: 'Journal',
     roadmap: 'Roadmap',
     support: 'Soutenir',
+    account: 'Mon compte',
+    login: 'Se connecter',
+    menu: 'Menu',
     about: 'À propos',
   },
   status: {
@@ -23,83 +26,65 @@ const fr = {
     Archived: 'Archivé',
   },
   hero: {
-    badge: 'Fait par deux étudiants de prépa',
-    title: 'Des projets sérieux, des simulations pour comprendre, des jeux pour décompresser.',
-    lead: "Nova Studio, c'est deux étudiants de classe prépa qui construisent, en dehors des cours, de vrais logiciels, des simulations interactives et quelques jeux. Tout est gratuit, et tout avance au grand jour.",
+    title: 'Des outils qui tiennent dans la durée.',
+    lead: 'Logiciels sérieux, simulations pour comprendre, quelques jeux pour souffler. Gratuit, documenté, construit en public.',
     explore: 'Découvrir les projets',
-    learn: 'Voir les simulations',
-    scroll: 'Défiler',
+    novaia: 'Essayer NovaIA',
   },
-  marquee: ['Projets sérieux', 'Simulations', 'Jeux'],
   manifesto: {
-    eyebrow: 'Le principe',
-    text: "Un socle de projets sérieux, une part pédagogique pour comprendre en manipulant, et une part de jeux pour le plaisir. Le tout construit entre deux cours de prépa, gratuit et en public.",
+    text: 'Un socle de projets sérieux, une part pour comprendre en manipulant, une part de jeux pour souffler.',
   },
   pillars: [
     {
       key: 'projects',
-      eyebrow: 'Le socle',
       title: 'Des projets sérieux',
-      text: "Des logiciels pensés comme de vrais produits : suivis, versionnés, documentés. C'est la colonne vertébrale du studio, à commencer par SOCLE.",
+      text: 'Des logiciels pensés comme de vrais produits : suivis, versionnés, documentés. SOCLE est le premier.',
       cta: 'Voir les projets',
     },
     {
       key: 'learn',
-      eyebrow: 'Le côté pédagogique',
       title: 'Comprendre en manipulant',
-      text: "Des simulations interactives pour voir un concept bouger plutôt que le lire : on change un paramètre, on observe ce qui se passe.",
-      cta: 'Explorer Apprendre',
+      text: 'Des simulations interactives : on change un paramètre, on observe ce qui bouge.',
+      cta: 'Explorer',
     },
     {
       key: 'games',
-      eyebrow: 'Le côté fun',
-      title: 'Des jeux pour décompresser',
-      text: "Des petits jeux sans prise de tête, faits pour souffler entre deux révisions. Pas de pub, pas d'achat intégré.",
-      cta: 'Voir les jeux',
+      title: 'Des jeux pour souffler',
+      text: "Des petits jeux sans prise de tête. Pas de pub, pas d'achat intégré.",
+      cta: 'Jouer',
     },
   ],
-  follow: {
-    eyebrow: 'Suivre le studio',
-    title: 'On montre aussi ce qu’on fait en vidéo.',
-    text: 'Coulisses, avancement et nouveautés : retrouve-nous sur nos chaînes.',
-  },
   featured: {
-    eyebrow: 'Travaux sélectionnés',
     title: 'Projets à la une',
-    description:
-      "Quelques réalisations en cours de développement ou de maintenance. Chaque projet est gratuit, et chaque projet continue d'évoluer.",
-    viewAll: 'Voir tous les projets →',
+    description: 'Ce qu’on construit en ce moment. Chaque projet est gratuit et continue d’évoluer.',
+    viewAll: 'Tous les projets',
     viewProject: 'Voir le projet',
   },
-  principles: [
-    {
-      title: 'Fait pour durer',
-      text: 'Nous préférons bien finir une chose et l’entretenir pendant des années plutôt que courir après dix tendances.',
-    },
-    {
-      title: 'Gratuit, par principe',
-      text: 'Chaque projet est gratuit. Si vous souhaitez soutenir le travail, c’est toujours facultatif.',
-    },
-    {
-      title: 'Fait au grand jour',
-      text: "L'avancement, les décisions et les échecs sont documentés dans le journal de développement, au fur et à mesure.",
-    },
-  ],
+  novaiaTeaser: {
+    title: 'NovaIA répond clairement, et dit quand il ne sait pas.',
+    text: 'Une question de culture, un calcul, une idée à discuter. NovaIA préfère avouer un doute plutôt que d’inventer une réponse.',
+    button: 'Essayer NovaIA',
+    greeting: 'Salut. Qu’est-ce qu’on cherche ?',
+    question: 'Un cycliste roule à 24 km/h pendant 2 h 30. Quelle distance parcourt-il ?',
+    answerLead: 'Distance = vitesse × durée',
+    answerResult: '24 × 2,5 = 60 km',
+    placeholder: 'Pose ta question…',
+  },
   journalTeaser: {
-    eyebrow: 'Depuis le journal',
-    readMore: 'Lire le journal →',
+    eyebrow: 'Dernière entrée du journal',
+    readMore: 'Lire le journal',
   },
   ctaSupport: {
     title: "Rien n'est à vendre ici.",
-    text: 'Chaque projet de Nova Studio est gratuit. S’il vous a été utile, le soutenir aide à ce que ça continue.',
+    text: 'Chaque projet de Nova Studio est gratuit. Le soutenir reste toujours facultatif.',
     button: 'Soutenir Nova Studio',
   },
   footer: {
-    tagline:
-      'Deux étudiants de prépa qui créent des projets sérieux, des simulations pour apprendre et des jeux — faits avec soin, partagés librement.',
+    tagline: 'Logiciels sérieux, simulations pour comprendre, jeux pour souffler. Gratuit et construit en public.',
     studio: 'Studio',
     elsewhere: 'Ailleurs',
     contact: 'Contact',
+    privacy: 'Confidentialité',
     copyright: 'Nova Studio. Tous droits réservés.',
     builtWith: 'Construit avec Next.js, en public.',
   },
@@ -164,7 +149,7 @@ const fr = {
     eyebrow: 'Pourquoi ce studio existe',
     title: 'À propos de Nova Studio',
     paragraphs: [
-      "Nova Studio est né entre deux cours de prépa, d'une frustration simple : la plupart des projets personnels restent inachevés, ou sortent sans le soin qu'ils mériteraient. Nous sommes deux étudiants, et ce studio existe pour faire l'inverse — traiter nos projets perso avec la même exigence qu'un vrai produit.",
+      "Nova Studio est né d'une frustration simple : la plupart des projets personnels restent inachevés, ou sortent sans le soin qu'ils mériteraient. Ce studio existe pour faire l'inverse — traiter chaque projet avec la même exigence qu'un vrai produit.",
       "Il n'y a pas de feuille de route dictée par un business plan, pas d'investisseurs à satisfaire, pas de publicité. Cette liberté est le point de départ. Elle signifie que chaque décision — du rayon d'un bouton au choix du prochain projet à sortir — se prend pour une seule raison : parce que ça rend la chose meilleure.",
       'Le studio tient sur trois piliers : un socle de projets sérieux, une part pédagogique avec des simulations pour comprendre en manipulant, et une part de jeux pour le plaisir. Tout part du même processus : remarquer quelque chose qui mérite d’être fait, y consacrer le temps nécessaire, et le partager simplement.',
     ],

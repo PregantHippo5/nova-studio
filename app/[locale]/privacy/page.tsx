@@ -135,20 +135,20 @@ export default function PrivacyPage({ params }: { params: { locale: string } }) 
   const locale: Locale = isLocale(params.locale) ? params.locale : defaultLocale;
   const c = CONTENT[locale];
   return (
-    <div className="py-20 md:py-28">
+    <div className="py-16 md:py-24">
       <Container>
         <div className="mx-auto max-w-2xl">
-          <h1 className="font-display text-4xl font-bold tracking-tight text-ink md:text-5xl">{c.title}</h1>
+          <h1 className="text-display-2 font-extrabold tracking-tight text-ink balance">{c.title}</h1>
           <p className="mt-5 text-[1.05rem] leading-relaxed text-muted">{c.intro}</p>
-          <p className="mt-2 font-mono text-[0.75rem] text-muted">{c.updated}</p>
+          <p className="mt-2 text-[0.8rem] text-muted">{c.updated}</p>
 
           {c.sections.map((s) => (
-            <section key={s.title} className="mt-10">
-              <h2 className="text-lg font-semibold text-ink">{s.title}</h2>
-              <ul className="mt-3 space-y-3">
+            <section key={s.title} className="ns-card mt-5 p-6 md:p-7">
+              <h2 className="text-lg font-extrabold tracking-tight text-ink">{s.title}</h2>
+              <ul className="mt-4 space-y-3">
                 {s.items.map((it) => (
                   <li key={it} className="flex gap-3 text-[0.97rem] leading-relaxed text-ink/85">
-                    <span aria-hidden className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-muted" />
+                    <span aria-hidden className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent/60" />
                     <span>{it}</span>
                   </li>
                 ))}
@@ -158,7 +158,7 @@ export default function PrivacyPage({ params }: { params: { locale: string } }) 
 
           <p className="mt-12 text-[0.97rem] text-ink/85">
             {c.contact}{' '}
-            <a className="underline underline-offset-2" href={`mailto:${CONTACT_EMAIL}`}>
+            <a className="font-semibold text-accent-deep underline underline-offset-2 dark:text-accent" href={`mailto:${CONTACT_EMAIL}`}>
               {CONTACT_EMAIL}
             </a>
             .
@@ -168,3 +168,4 @@ export default function PrivacyPage({ params }: { params: { locale: string } }) 
     </div>
   );
 }
+

@@ -1,10 +1,10 @@
-import { Syne } from 'next/font/google';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 
-// Police d'affichage (titres géants, intro, bandeau). Large et un peu étrange : elle porte la personnalité du studio.
-// Le corps du site garde Inter, chargé dans app/layout.tsx.
-export const display = Syne({
+// Police unique du site (titres et texte) : ronde, lisible, avec du caractère en gras.
+// Branchée sur la variable --font-display, posée sur <html> dans app/layout.tsx.
+export const display = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  weight: ['500', '700', '800'],
+  weight: ['400', '500', '600', '700', '800'],
   variable: '--font-display',
   display: 'swap',
 });

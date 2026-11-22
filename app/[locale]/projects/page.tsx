@@ -20,14 +20,10 @@ export default async function ProjectsPage({ params }: { params: { locale: strin
   const projects = await getProjects();
 
   return (
-    <div className="py-20 md:py-28">
+    <div className="py-16 md:py-24">
       <Container>
-        <SectionHeading
-          eyebrow={dict.projectsPage.eyebrow}
-          title={dict.projectsPage.title}
-          description={dict.projectsPage.description}
-        />
-        <div className="mt-14">
+        <SectionHeading title={dict.projectsPage.title} description={dict.projectsPage.description} />
+        <div className="mt-12">
           <ProjectsGrid locale={locale} dict={dict} projects={projects} />
         </div>
       </Container>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Container from '@/components/ui/Container';
 import SectionHeading from '@/components/ui/SectionHeading';
+import NovaStar from '@/components/brand/NovaStar';
 import { isLocale, defaultLocale, locales, Locale } from '@/lib/i18n/config';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 
@@ -32,24 +33,25 @@ export default function SupportPage({ params }: { params: { locale: string } }) 
   const dict = getDictionary(locale);
 
   return (
-    <div className="py-20 md:py-28">
+    <div className="py-16 md:py-24">
       <Container className="max-w-3xl">
-        <SectionHeading
-          eyebrow={dict.supportPage.eyebrow}
-          title={dict.supportPage.title}
-          description={dict.supportPage.description}
-        />
+        <div className="flex items-start gap-5">
+          <span className="ns-float mt-1 hidden shrink-0 sm:block">
+            <NovaStar size={72} face track />
+          </span>
+          <SectionHeading title={dict.supportPage.title} description={dict.supportPage.description} />
+        </div>
 
-        <div className="mt-14 flex flex-col divide-y divide-line border-t border-line">
+        <div className="mt-12 flex flex-col gap-3">
           {dict.supportPage.options.map((option) => {
             const ready = readiness[option.name] ?? false;
             return (
               <div
                 key={option.name}
-                className={`flex items-center justify-between gap-6 py-6 ${!ready ? 'opacity-45' : ''}`}
+                className={`ns-card flex items-center justify-between gap-6 p-6 ${!ready ? 'opacity-50' : ''}`}
               >
                 <div>
-                  <h3 className="text-[1.05rem] font-semibold text-ink">{option.name}</h3>
+                  <h3 className="text-[1.05rem] font-extrabold tracking-tight text-ink">{option.name}</h3>
                   <p className="mt-1 text-sm leading-relaxed text-muted">{option.description}</p>
                 </div>
                 {ready ? (
@@ -57,14 +59,14 @@ export default function SupportPage({ params }: { params: { locale: string } }) 
                     href={links[option.name] ?? '#'}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex shrink-0 items-center justify-center rounded-full border border-line px-4 py-2.5 text-sm font-medium text-ink transition-all duration-300 ease-smooth hover:border-ink/40 hover:bg-mist"
+                    className="inline-flex shrink-0 items-center justify-center rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_20px_-10px_rgb(var(--accent)/0.8)] transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97]"
                   >
                     {dict.supportPage.open}
                   </a>
                 ) : (
                   <span
                     aria-disabled="true"
-                    className="inline-flex shrink-0 cursor-not-allowed items-center justify-center rounded-full border border-line px-4 py-2.5 font-mono text-xs uppercase tracking-[0.06em] text-muted"
+                    className="inline-flex shrink-0 cursor-not-allowed items-center justify-center rounded-full bg-ink/5 px-4 py-2.5 text-[0.8rem] font-semibold text-muted"
                   >
                     {dict.supportPage.comingSoon}
                   </span>
@@ -74,8 +76,9 @@ export default function SupportPage({ params }: { params: { locale: string } }) 
           })}
         </div>
 
-        <p className="mt-14 text-sm leading-relaxed text-muted">{dict.supportPage.altText}</p>
+        <p className="mt-10 text-sm leading-relaxed text-muted">{dict.supportPage.altText}</p>
       </Container>
     </div>
   );
 }
+
