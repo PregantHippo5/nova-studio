@@ -3,6 +3,7 @@
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import NovaiaMark from '@/components/novaia/NovaiaMark';
+import { useTabStatus } from '@/components/novaia/useTabStatus';
 import type { Locale } from '@/lib/i18n/config';
 import type { NovaiaCopy } from '@/lib/novaia/copy';
 import FormattedReply from '@/components/novaia/FormattedReply';
@@ -144,6 +145,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const [drawer, setDrawer] = useState(false);
   const [queue, setQueue] = useState<string[]>([]); // messages écrits pendant qu'une réponse arrive : partent à la suite
   const nt = nvText(locale);
+  const [tabEvent, setTabEvent] = useState({ n: 0, error: false }); // une réponse vient d'arriver (icône de l'onglet)
   const [portalReady, setPortalReady] = useState(false);
   useEffect(() => setPortalReady(true), []);
 
@@ -517,6 +519,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
       const push = (reply: string, error = false, sources: Source[] = [], ab?: StoredMessage['ab']) => {
         if (!mounted.current) return;
+        setTabEvent((e) => ({ n: e.n + 1, error }));
         setConvs((prev) =>
           prev.map((c) =>
             c.id !== convId
@@ -976,6 +979,8 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user');
   const canRegenerate = !loading && lastMessage?.role === 'assistant' && !lastUserMessage?.image;
   const headerTitle = active ? active.title : copy.untitled;
+
+  useTabStatus(loadingId !== null, tabEvent, locale === 'en' ? { working: 'NovaIA is writing…', done: 'Reply ready', fail: 'NovaIA hit a snag' } : { working: 'NovaIA écrit…', done: 'Réponse prête', fail: 'NovaIA a eu un souci' });
 
   const ui = (
     <div className="nv-bg fixed inset-0 z-[100] flex h-[100dvh] w-screen overflow-hidden text-ink">

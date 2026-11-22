@@ -1,3 +1,4 @@
+import type { Viewport } from 'next';
 import { Inter, IBM_Plex_Mono } from 'next/font/google';
 import { display } from '@/lib/fonts';
 import './globals.css';
@@ -15,6 +16,14 @@ const mono = IBM_Plex_Mono({
   variable: '--font-mono',
   display: 'swap',
 });
+
+// Couleur de la barre du navigateur / du téléphone (clair et sombre).
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#FBF4E8' },
+    { media: '(prefers-color-scheme: dark)', color: '#0E0F18' },
+  ],
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

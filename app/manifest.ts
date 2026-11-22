@@ -7,13 +7,15 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Nova Studio et NovaIA',
     start_url: '/fr',
     display: 'standalone',
-    background_color: '#0c0c0e',
-    theme_color: '#0c0c0e',
+    background_color: '#FBF4E8',
+    theme_color: '#FBF4E8',
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
       { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
-    shortcuts: [{ name: 'NovaIA', url: '/fr/novaia', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] }],
+    shortcuts: [
+      { name: 'NovaIA', short_name: 'NovaIA', url: '/fr/novaia', icons: [{ src: '/icons/novaia-192.png', sizes: '192x192', type: 'image/png' }] },
+    ],
   };
 }
