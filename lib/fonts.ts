@@ -4,7 +4,6 @@ import { Plus_Jakarta_Sans } from 'next/font/google';
 // Branchée sur la variable --font-display, posée sur <html> dans app/layout.tsx.
 export const display = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
   variable: '--font-display',
   display: 'swap',
 });
