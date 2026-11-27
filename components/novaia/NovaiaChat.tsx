@@ -18,6 +18,9 @@ import { fetchRemote, mergeConversations, pushConversation, pushDeletion, purgeO
 import { putDoc, loadConvDocs, deleteConvDocs, clearAllDocs } from '@/lib/novaia/files';
 import { isPdf, openPdf, type OpenedPdf } from '@/lib/novaia/pdf';
 import { createClient } from '@/lib/supabase/client';
+import { cleanTool, closeFences, toolOf, type ToolName } from '@/lib/novaia/sources';
+import ToolChip from '@/components/novaia/ToolChip';
+import SourceChip from '@/components/novaia/SourceChip';
 import { dictationSupported, ttsSupported, startDictation, speak, stopSpeaking } from '@/lib/novaia/voice';
 import { startListener, unlockAudio, playServerTts, stopServerTts, type Listener } from '@/lib/novaia/voiceClient';
 import {
@@ -141,6 +144,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     setHands(v);
   };
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [liveText, setLiveText] = useState(''); // texte de la réponse en cours d'écriture (affiché au fil de l'eau)
   const [steps, setSteps] = useState<ReplyState[]>([]); // ce que NovaIA fait en ce moment (recherche, calcul, réflexion, rédaction)
   const [drawer, setDrawer] = useState(false);
   const [queue, setQueue] = useState<string[]>([]); // messages écrits pendant qu'une réponse arrive : partent à la suite
@@ -462,7 +466,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   useEffect(() => {
     const el = listRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-  }, [messages.length, loadingHere, activeId]);
+  }, [messages.length, loadingHere, activeId, liveText.length > 0]);
 
   // Le champ grandit avec le texte, jusqu'à 160 px.
   useEffect(() => {
@@ -516,9 +520,11 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       abortRef.current = controller;
       setLoadingId(convId);
       setSteps([]);
+      setLiveText('');
 
-      const push = (reply: string, error = false, sources: Source[] = [], ab?: StoredMessage['ab']) => {
+      const push = (reply: string, error = false, sources: Source[] = [], ab?: StoredMessage['ab'], tool?: ToolName) => {
         if (!mounted.current) return;
+        setLiveText('');
         setTabEvent((e) => ({ n: e.n + 1, error }));
         setConvs((prev) =>
           prev.map((c) =>
@@ -529,7 +535,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   updatedAt: Date.now(),
                   messages: [
                     ...c.messages,
-                    { id: nextMessageId(c), role: 'assistant' as const, content: reply, error, ...(sources.length ? { sources } : {}), ...(ab ? { ab } : {}) },
+                    { id: nextMessageId(c), role: 'assistant' as const, content: reply, error, ...(sources.length ? { sources } : {}), ...(tool ? { tool } : {}), ...(ab ? { ab } : {}) },
                   ].slice(-MAX_MESSAGES),
                 }
           )
@@ -585,7 +591,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
           const handle = (line: string) => {
             if (!line.trim()) return;
-            let ev: { t?: unknown; v?: unknown; reply?: unknown; sources?: unknown; mode?: unknown; ab?: unknown };
+            let ev: { t?: unknown; v?: unknown; reply?: unknown; sources?: unknown; mode?: unknown; ab?: unknown; tool?: unknown };
             try {
               ev = JSON.parse(line);
             } catch {
@@ -594,6 +600,8 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
             if (ev.t === 'etat' && typeof ev.v === 'string') {
               const v = ev.v as ReplyState;
               if (mounted.current) setSteps((prev) => (prev.includes(v) ? prev : [...prev, v]));
+            } else if (ev.t === 'txt' && typeof ev.v === 'string') {
+              if (mounted.current) setLiveText(ev.v.slice(0, 6000));
             } else if (ev.t === 'fin' && typeof ev.reply === 'string') {
               answered = true;
               const alt = ev.ab as { textB?: unknown; dimsA?: unknown; dimsB?: unknown } | undefined;
@@ -602,7 +610,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   ? { textB: alt.textB.trim(), dimsA: cleanDims(alt.dimsA), dimsB: cleanDims(alt.dimsB) }
                   : undefined;
               if (ab) writeAb({ done: abInfo.done + 1, lastAt: assistantCount + 1 });
-              push(ev.reply, false, cleanSources(ev.sources), ab);
+              push(ev.reply, false, cleanSources(ev.sources), ab, cleanTool(ev.tool));
             } else if (ev.t === 'err') {
               answered = true;
               push(copy.error, true);
@@ -635,7 +643,10 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
         if (!controller.signal.aborted) push(copy.error, true);
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
-        if (mounted.current) setLoadingId((cur) => (cur === convId ? null : cur));
+        if (mounted.current) {
+          setLiveText('');
+          setLoadingId((cur) => (cur === convId ? null : cur));
+        }
       }
     },
     [locale, copy.error, copy.rateLimited, copy.imageTooBig]
@@ -1280,7 +1291,13 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                       );
                     })()}
                     {m.role === 'assistant' && !m.error ? (
-                      <FormattedReply text={m.content} copyLabel={copy.copy} copiedLabel={copy.copied} />
+                      <>
+                        {(() => {
+                          const tl = toolOf(m.tool, m.content);
+                          return tl ? <ToolChip tool={tl} locale={locale} /> : null;
+                        })()}
+                        <FormattedReply text={m.content} copyLabel={copy.copy} copiedLabel={copy.copied} />
+                      </>
                     ) : (
                       m.content
                     )}
@@ -1290,17 +1307,8 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   {m.role === 'assistant' && !m.ab && m.sources && m.sources.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5 px-1 text-[0.72rem] text-muted">
                       <span className="mr-0.5">{copy.sources}</span>
-                      {m.sources.map((s) => (
-                        <a
-                          key={s.url}
-                          href={s.url}
-                          target="_blank"
-                          rel="noopener noreferrer nofollow"
-                          className="nv-glass max-w-[14rem] truncate rounded-full px-3 py-0.5 transition-colors hover:text-accent"
-                          title={s.title}
-                        >
-                          {s.title}
-                        </a>
+                      {m.sources.map((src) => (
+                        <SourceChip key={src.url} source={src} />
                       ))}
                     </div>
                   )}
@@ -1349,7 +1357,12 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
                   aria-live="polite"
                   aria-label={copy.thinking}
                 >
-                  {steps.length > 1 && (
+                  {liveText.trim() && (
+                    <div className="mb-2 text-[0.98rem] leading-[1.7] text-ink">
+                      <FormattedReply text={closeFences(liveText)} copyLabel={copy.copy} copiedLabel={copy.copied} />
+                    </div>
+                  )}
+                  {steps.length > 1 && !liveText.trim() && (
                     <ul className="mb-1.5 space-y-0.5">
                       {steps.slice(0, -1).map((st) => (
                         <li key={st} className="flex items-center gap-1.5 opacity-70">

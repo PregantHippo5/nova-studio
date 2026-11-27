@@ -120,7 +120,13 @@ export async function POST(request: Request) {
           }
         };
         try {
-          const result = await streamReply(messages, locale, (v) => write({ t: 'etat', v }), cleanPerso({ style: body.style, memoire: body.memoire, resume: body.resume, ab: body.ab }));
+          const result = await streamReply(
+            messages,
+            locale,
+            (v) => write({ t: 'etat', v }),
+            cleanPerso({ style: body.style, memoire: body.memoire, resume: body.resume, ab: body.ab }),
+            (v) => write({ t: 'txt', v })
+          );
           write({ t: 'fin', ...result });
         } catch {
           write({ t: 'err' });

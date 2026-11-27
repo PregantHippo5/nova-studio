@@ -35,6 +35,8 @@ export interface ReplyResult {
   reply: string;
   mode: ReplyMode;
   sources?: ReplySource[];
+  /** outil utilisé (icône sous le message) */
+  tool?: ToolName;
   ab?: ReplyAlt;
 }
 
@@ -44,6 +46,7 @@ export type Lang = 'fr' | 'en';
 
 // --------------------------------------------------------------------------- vrai modèle (Space Hugging Face)
 
+import { cleanSources, cleanTool, type ToolName } from '@/lib/novaia/sources';
 import { cleanDims, persoIsEmpty, type Dims, type Perso } from '@/lib/novaia/style';
 
 const SPACE_URL = (process.env.NOVAIA_SPACE_URL ?? '').replace(/\/+$/, '');
@@ -265,7 +268,8 @@ export async function streamReply(
   messages: ChatMessage[],
   locale: Lang,
   emit: (state: ReplyState) => void,
-  perso?: Perso
+  perso?: Perso,
+  emitText?: (text: string) => void
 ): Promise<ReplyResult> {
   const last = [...messages].reverse().find((m) => m.role === 'user');
   if (!SPACE_URL || !last?.content.trim()) return generateReply(messages, locale);
@@ -354,6 +358,8 @@ export async function streamReply(
         const inner = Array.isArray(outer) && typeof outer[0] === 'string' ? (JSON.parse(outer[0]) as Record<string, unknown>) : null;
         if (!inner) return null;
         if (typeof inner.etat === 'string' && (STATES as string[]).includes(inner.etat)) emit(inner.etat as ReplyState);
+        // texte en cours d'écriture (le Space envoie le texte DEPUIS LE DÉBUT à chaque fois : un message perdu ne gêne pas)
+        if (typeof inner.partiel === 'string' && inner.partiel.trim() && emitText) emitText(inner.partiel.slice(0, 6000));
         if (typeof inner.texte === 'string' && inner.texte.trim()) {
           const ab =
             typeof inner.ab === 'object' && inner.ab !== null && typeof (inner.ab as Record<string, unknown>).b === 'string'
@@ -366,7 +372,8 @@ export async function streamReply(
           return {
             reply: inner.texte.trim(),
             mode: 'live',
-            sources: cleanReplySources(inner.sources),
+            sources: cleanSources(inner.sources),
+            ...(cleanTool(inner.outil) ? { tool: cleanTool(inner.outil) } : {}),
             ...(ab && ab.textB ? { ab } : {}),
           };
         }
@@ -397,26 +404,6 @@ export async function streamReply(
     const timedOut = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
     return fail(timedOut ? 'sleeping' : 'down', `${err instanceof Error ? err.name + ' ' + err.message : String(err)}`);
   }
-}
-
-/** Sources : liens https vers Wikipédia seulement (la valeur vient du Space). */
-function cleanReplySources(x: unknown): ReplySource[] {
-  if (!Array.isArray(x)) return [];
-  const out: ReplySource[] = [];
-  for (const s of x.slice(0, 3)) {
-    if (typeof s !== 'object' || s === null) continue;
-    const { titre, url } = s as Record<string, unknown>;
-    if (typeof titre !== 'string' || typeof url !== 'string') continue;
-    try {
-      const u = new URL(url);
-      if (u.protocol === 'https:' && (u.hostname === 'wikipedia.org' || u.hostname.endsWith('.wikipedia.org'))) {
-        out.push({ title: titre.slice(0, 120), url: u.toString() });
-      }
-    } catch {
-      /* ignoré */
-    }
-  }
-  return out;
 }
 
 
