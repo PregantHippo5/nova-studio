@@ -1,6 +1,7 @@
 import { splitBlocks, splitInline, splitText, type Inline } from '@/lib/novaia/format';
 import CodeBlock from '@/components/novaia/CodeBlock';
 import Chart from '@/components/novaia/Chart';
+import Math from '@/components/novaia/Math';
 import { parseChart } from '@/lib/novaia/chart';
 
 /** Une ligne courte qui ressemble à un calcul (« 24 × 2,5 = 60 km ») : affichée comme une formule, centrée. */
@@ -26,6 +27,8 @@ function InlineText({ text }: { text: string }) {
           <code key={j} className="rounded-md bg-accent-soft px-1.5 py-0.5 font-mono text-[0.85em] text-accent-deep dark:text-accent">
             {s.text}
           </code>
+        ) : s.type === 'math' ? (
+          <Math key={j} tex={s.text} />
         ) : s.type === 'link' ? (
           <a key={j} href={s.href} target="_blank" rel="noopener noreferrer nofollow" className="underline underline-offset-2 hover:opacity-80">
             {s.text}
@@ -38,7 +41,7 @@ function InlineText({ text }: { text: string }) {
   );
 }
 
-/** Affiche une réponse de NovaIA : LaTeX converti en texte lisible, paragraphes, listes, **gras**, *italique*, `code`, liens et blocs de code colorés avec bouton Copier. */
+/** Affiche une réponse de NovaIA : formules LaTeX rendues par KaTeX, paragraphes, listes, **gras**, *italique*, `code`, liens et blocs de code colorés avec bouton Copier. */
 export default function FormattedReply({
   text,
   copyLabel = 'Copier',
@@ -56,6 +59,7 @@ export default function FormattedReply({
       {blocks.map((b, i) => {
         const chart = b.type === 'code' && b.lang === 'nova-chart' ? parseChart(b.text) : null;
         if (chart) return <Chart key={i} data={chart} />;
+        if (b.type === 'math') return <Math key={i} tex={b.text} display />;
         return b.type === 'code' ? (
           <CodeBlock key={i} code={b.text} lang={b.lang} copyLabel={copyLabel} copiedLabel={copiedLabel} />
         ) : (

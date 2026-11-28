@@ -18,7 +18,7 @@ const SUPER: Record<string, string> = {
 };
 
 /** Contenu d'une formule LaTeX -> texte lisible. */
-function mathToText(expr: string): string {
+export function mathToText(expr: string): string {
   let s = expr;
 
   s = s.replace(/\\(?:text|mathrm|textbf|mathbf|operatorname)\{([^{}]*)\}/g, '$1');
@@ -63,7 +63,7 @@ export function cleanMath(text: string): string {
     .replace(/\n{3,}/g, '\n\n');
 }
 
-export type Block = { type: 'text'; text: string } | { type: 'code'; text: string; lang?: string };
+export type Block = { type: 'text'; text: string } | { type: 'code'; text: string; lang?: string } | { type: 'math'; text: string };
 
 /** Sépare le texte et les blocs de code (```…```). Un bloc non fermé va jusqu'à la fin. */
 export function splitBlocks(text: string): Block[] {
@@ -72,8 +72,21 @@ export function splitBlocks(text: string): Block[] {
 
   parts.forEach((part, i) => {
     if (i % 2 === 0) {
-      const t = cleanMath(part).replace(/^\n+|\n+$/g, '');
-      if (t.trim()) blocks.push({ type: 'text', text: t });
+      // formules en bloc ($$…$$ ou \[…\]) : une vraie formule centrée (KaTeX) ; le reste est du texte, ses formules en ligne sont gérées par splitInline
+      const re = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]/g;
+      let last = 0;
+      let m: RegExpExecArray | null;
+      const pushText = (chunk: string) => {
+        const t = chunk.replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '');
+        if (t.trim()) blocks.push({ type: 'text', text: t });
+      };
+      while ((m = re.exec(part)) !== null) {
+        pushText(part.slice(last, m.index));
+        const tex = (m[1] ?? m[2] ?? '').trim();
+        if (tex) blocks.push({ type: 'math', text: tex });
+        last = m.index + m[0].length;
+      }
+      pushText(part.slice(last));
     } else {
       // la première ligne d'un bloc est souvent le nom du langage (python, js…)
       const head = part.match(/^([a-zA-Z0-9+#_-]*)\n/);
@@ -86,13 +99,13 @@ export function splitBlocks(text: string): Block[] {
   return blocks;
 }
 
-export type Inline = { type: 'text' | 'bold' | 'code' | 'italic'; text: string } | { type: 'link'; text: string; href: string };
+export type Inline = { type: 'text' | 'bold' | 'code' | 'italic' | 'math'; text: string } | { type: 'link'; text: string; href: string };
 
 /** Découpe une ligne en texte / **gras** / `code`. Les titres Markdown (# Titre) deviennent du gras. */
 export function splitInline(text: string): Inline[] {
   const src = text.replace(/^[ \t]*#{1,6}[ \t]+(.+)$/gm, '**$1**');
   const out: Inline[] = [];
-  const re = /\*\*([^*\n]+?)\*\*|`([^`\n]+)`|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(?<![*\w])\*([^*\s][^*\n]*?[^*\s]|[^*\s])\*(?![*\w])/g;
+  const re = /\*\*([^*\n]+?)\*\*|`([^`\n]+)`|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(?<![*\w])\*([^*\s][^*\n]*?[^*\s]|[^*\s])\*(?![*\w])|(?<![\w$])\$([^\s$,.;:!?)](?:[^$\n]*[^\s$])?)\$|\\\(([^\n]+?)\\\)/g;
   let last = 0;
   let m: RegExpExecArray | null;
 
@@ -105,7 +118,9 @@ export function splitInline(text: string): Inline[] {
           ? { type: 'code', text: m[2] }
           : m[3] !== undefined
             ? { type: 'link', text: m[3], href: m[4] }
-            : { type: 'italic', text: m[5] }
+            : m[5] !== undefined
+              ? { type: 'italic', text: m[5] }
+              : { type: 'math', text: (m[6] ?? m[7]) as string }
     );
     last = m.index + m[0].length;
   }

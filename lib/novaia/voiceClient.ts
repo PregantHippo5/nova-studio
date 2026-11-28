@@ -6,9 +6,10 @@
 //  - lecture de la réponse par la voix du serveur (Piper), avec repli sur la voix du navigateur.
 // Rien n'est envoyé tant que tu ne parles pas, et rien n'est enregistré avant le clic sur « Mode vocal ».
 import { chunks, plainForSpeech } from '@/lib/novaia/voice';
+import { fillerList, type FillerKind } from '@/lib/novaia/voiceFlow';
 
 const RATE = 16000;
-const SILENCE_MS = 1100;
+const SILENCE_MS = 1400; // pause tolérée avant d'envoyer (réfléchir à voix haute ne coupe plus la phrase)
 const MIN_SPEECH_MS = 350;
 const MAX_SECONDS = 20;
 const PRE_ROLL = 0.4 * RATE;
@@ -177,6 +178,7 @@ export function unlockAudio(): void {
 
 export function stopServerTts(): void {
   ttsToken++;
+  stopFiller();
   if (audioEl) {
     audioEl.pause();
     audioEl.removeAttribute('src');
@@ -234,4 +236,73 @@ export async function playServerTts(markdown: string, lang: 'fr' | 'en', onEnd: 
     if (mine === ttsToken) onEnd();
   })();
   return true;
+}
+
+
+// ------------------------------------------------------------------------------- phrases d'attente (masquent la latence)
+// Préparées à l'avance avec la MÊME voix que les réponses (Piper), mises en mémoire : au moment de s'en servir, aucune attente.
+const fillerAudio = new Map<string, string>(); // "fr|texte" -> data URL audio
+let fillerEl: HTMLAudioElement | null = null;
+let fillerDone: Promise<void> = Promise.resolve();
+const fillerLoading = new Set<string>();
+
+// Ce qu'on prépare : les 3 phrases « neutres », 1 phrase par situation (recherche, calcul, réflexion), 2 pour « encore un peu » = 8 appels de voix, une seule fois par langue.
+const PREPARE: [FillerKind, number[]][] = [['generic', [0, 1, 2]], ['recherche', [0]], ['calcul', [0]], ['reflexion', [0]], ['encore', [0, 1]]];
+
+export async function prefetchFillers(lang: 'fr' | 'en', alive: () => boolean): Promise<void> {
+  if (fillerLoading.has(lang)) return;
+  fillerLoading.add(lang);
+  try {
+    for (const [kind, idx] of PREPARE) {
+      for (const i of idx) {
+        const text = fillerList(kind, lang)[i];
+        const key = lang + '|' + text;
+        if (fillerAudio.has(key)) continue;
+        if (!alive()) {
+          fillerLoading.delete(lang); // interrompu : une prochaine session reprendra
+          return;
+        }
+        const url = await fetchChunk(text, lang);
+        if (url) fillerAudio.set(key, url);
+        await new Promise((r) => setTimeout(r, 700));
+      }
+    }
+  } catch {
+    fillerLoading.delete(lang);
+  }
+}
+
+/** Joue une phrase d'attente prête (variante choisie par `n`, pour ne pas répéter). Silence si rien n'est prêt : mieux vaut rien qu'une autre voix. */
+export function playFiller(kind: FillerKind, lang: 'fr' | 'en', n = 0): boolean {
+  const ready = fillerList(kind, lang)
+    .map((t) => fillerAudio.get(lang + '|' + t))
+    .filter((u): u is string => !!u);
+  if (ready.length === 0) return false;
+  const url = ready[n % ready.length];
+  stopFiller();
+  const el = (fillerEl ??= new Audio());
+  fillerDone = new Promise<void>((resolve) => {
+    el.onended = () => resolve();
+    el.onerror = () => resolve();
+    el.src = url;
+    el.play().catch(() => resolve());
+  });
+  return true;
+}
+
+export function fillerBusy(): boolean {
+  return !!fillerEl && !!fillerEl.src && !fillerEl.paused && !fillerEl.ended;
+}
+
+/** Se résout quand la phrase d'attente en cours est finie (tout de suite s'il n'y en a pas) : la réponse attend son tour au lieu de la couper. */
+export function whenFillerDone(): Promise<void> {
+  return fillerBusy() ? Promise.race([fillerDone, new Promise<void>((r) => setTimeout(r, 4000))]) : Promise.resolve();
+}
+
+export function stopFiller(): void {
+  if (fillerEl) {
+    fillerEl.onended = null;
+    fillerEl.pause();
+    fillerEl.removeAttribute('src');
+  }
 }

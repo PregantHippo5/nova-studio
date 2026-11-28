@@ -22,7 +22,8 @@ import { cleanTool, closeFences, toolOf, type ToolName } from '@/lib/novaia/sour
 import ToolChip from '@/components/novaia/ToolChip';
 import SourceChip from '@/components/novaia/SourceChip';
 import { dictationSupported, ttsSupported, startDictation, speak, stopSpeaking } from '@/lib/novaia/voice';
-import { startListener, unlockAudio, playServerTts, stopServerTts, type Listener } from '@/lib/novaia/voiceClient';
+import { startListener, unlockAudio, playServerTts, stopServerTts, prefetchFillers, playFiller, fillerBusy, whenFillerDone, type Listener } from '@/lib/novaia/voiceClient';
+import { isHallucination, isFragment, kindForState } from '@/lib/novaia/voiceFlow';
 import {
   MAX_CONVERSATIONS,
   MAX_MESSAGES,
@@ -137,6 +138,9 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
   const handsRef = useRef<'off' | 'listening' | 'thinking' | 'speaking'>('off');
   const listenerRef = useRef<Listener | null>(null);
   const awaitReplyRef = useRef<'no' | 'sent' | 'running'>('no');
+  const holdRef = useRef<{ text: string; count: number; timer: number } | null>(null); // début de phrase gardé en attendant la suite
+  const fillerTimers = useRef<number[]>([]);
+  const stepsRef = useRef<ReplyState[]>([]);
   const sendRef = useRef<(t: string) => void>(() => undefined);
   const activeIdRef = useRef<string | null>(null);
   const setHandsBoth = (v: 'off' | 'listening' | 'thinking' | 'speaking') => {
@@ -759,13 +763,28 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
 
   // ----- voix : lecture (voix du serveur si activée, sinon celle du navigateur) et mode mains libres
 
+  useEffect(() => {
+    stepsRef.current = steps;
+  }, [steps]);
+
   const speakAny = (text: string, onEnd: () => void) => {
     const lg = locale === 'en' ? 'en' : 'fr';
     const browser = () => (ttsSupported() ? speak(text, lg, onEnd) : onEnd());
-    if (!voiceServer) return browser();
-    void playServerTts(text, lg, onEnd).then((ok) => {
-      if (!ok) browser();
-    });
+    const go = () => {
+      if (!voiceServer) return browser();
+      void playServerTts(text, lg, onEnd).then((ok) => {
+        if (!ok) browser();
+      });
+    };
+    // une phrase d'attente est en cours (« je réfléchis… ») : la réponse attend qu'elle soit finie au lieu de la couper
+    if (fillerBusy()) {
+      void whenFillerDone().then(() => {
+        if (handsRef.current !== 'speaking') return; // mode arrêté entre-temps
+        go();
+      });
+      return;
+    }
+    go();
   };
 
   const isOff = () => handsRef.current === 'off';
@@ -777,7 +796,35 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     setHandsBoth('listening');
   };
 
+  const clearHold = () => {
+    if (holdRef.current) window.clearTimeout(holdRef.current.timer);
+    holdRef.current = null;
+  };
+
+  const clearFillers = () => {
+    fillerTimers.current.forEach((t) => window.clearTimeout(t));
+    fillerTimers.current = [];
+  };
+
+  /** Phrases d'attente variées pendant que NovaIA réfléchit : la première après ~2,5 s sans réponse, puis « encore un peu » toutes les ~9 s. */
+  const startFillers = () => {
+    clearFillers();
+    const lg = locale === 'en' ? 'en' : 'fr';
+    const waiting = () => handsRef.current === 'thinking' && awaitReplyRef.current !== 'no';
+    const first = window.setTimeout(() => {
+      if (waiting()) playFiller(kindForState(stepsRef.current[stepsRef.current.length - 1]), lg, Math.floor(Math.random() * 3));
+    }, 2500);
+    const again = [11500, 20500].map((ms, i) =>
+      window.setTimeout(() => {
+        if (waiting()) playFiller('encore', lg, i);
+      }, ms)
+    );
+    fillerTimers.current = [first, ...again];
+  };
+
   const stopHands = () => {
+    clearHold();
+    clearFillers();
     listenerRef.current?.stop();
     listenerRef.current = null;
     awaitReplyRef.current = 'no';
@@ -786,16 +833,36 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     setHandsBoth('off');
   };
 
+  /** Envoie le texte entendu et lance les phrases d'attente. */
+  const deliver = (text: string) => {
+    clearHold();
+    if (handsRef.current !== 'listening' && handsRef.current !== 'thinking') return;
+    listenerRef.current?.pause();
+    setHandsBoth('thinking');
+    awaitReplyRef.current = 'sent';
+    sendRef.current(text);
+    startFillers();
+    window.setTimeout(() => {
+      if (awaitReplyRef.current === 'sent') {
+        clearFillers();
+        backToListening(); // l'envoi n'a pas démarré (déjà en cours, texte vide…)
+      }
+    }, 3000);
+  };
+
   const onUtterance = async (wav: string) => {
     if (handsRef.current !== 'listening') return;
+    const lg = locale === 'en' ? 'en' : 'fr';
+    const held = holdRef.current;
+    if (held) window.clearTimeout(held.timer); // la suite est arrivée : on ne l'envoie plus seule
     listenerRef.current?.pause();
     setHandsBoth('thinking');
     let text = '';
     try {
       const r = await fetch('/api/novaia/voice/transcribe', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept-Language': locale === 'en' ? 'en' : 'fr' },
-        body: JSON.stringify({ audio: wav, locale: locale === 'en' ? 'en' : 'fr' }),
+        headers: { 'Content-Type': 'application/json', 'Accept-Language': lg },
+        body: JSON.stringify({ audio: wav, locale: lg }),
       });
       const d = (await r.json().catch(() => null)) as { text?: unknown; error?: unknown } | null;
       if (d && typeof d.text === 'string') text = d.text.trim();
@@ -804,15 +871,19 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
       /* réseau : on retombe sur « rien entendu » */
     }
     if (isOff()) return;
-    if (!text) {
-      setAttachError(pc.handsNoSpeech);
+    if (!text || isHallucination(text)) {
+      // bruit transcrit en phrase inventée : on ignore, et on garde le début de phrase déjà entendu
+      if (!held) setAttachError(pc.handsNoSpeech);
+      else holdRef.current = { ...held, timer: window.setTimeout(() => deliver(held.text), 2500) };
       return backToListening();
     }
-    awaitReplyRef.current = 'sent';
-    sendRef.current(text);
-    window.setTimeout(() => {
-      if (awaitReplyRef.current === 'sent') backToListening(); // l'envoi n'a pas démarré (déjà en cours, texte vide…)
-    }, 3000);
+    const full = held ? `${held.text} ${text}`.trim() : text;
+    if (isFragment(full, lg) && (held?.count ?? 0) < 2) {
+      // phrase coupée (pause pour réfléchir) : on attend la suite quelques secondes avant de répondre
+      holdRef.current = { text: full, count: (held?.count ?? 0) + 1, timer: window.setTimeout(() => deliver(full), 4500) };
+      return backToListening();
+    }
+    deliver(full);
   };
 
   const toggleHands = () => {
@@ -821,11 +892,22 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     stopSpeaking();
     stopServerTts();
     stopDictRef.current?.();
-    startListener({ onUtterance: (w) => void onUtterance(w) })
+    startListener({
+      onUtterance: (w) => void onUtterance(w),
+      onSpeechStart: () => {
+        // la personne reparle : on repousse l'envoi du début de phrase gardé
+        const h = holdRef.current;
+        if (h) {
+          window.clearTimeout(h.timer);
+          holdRef.current = { ...h, timer: window.setTimeout(() => deliver(h.text), 12000) };
+        }
+      },
+    })
       .then((l) => {
         if (!mounted.current) return l.stop();
         listenerRef.current = l;
         setHandsBoth('listening');
+        if (voiceServer) void prefetchFillers(locale === 'en' ? 'en' : 'fr', () => handsRef.current !== 'off');
       })
       .catch(() => setAttachError(pc.micDenied));
   };
@@ -836,6 +918,7 @@ export default function NovaiaChat({ locale, copy }: { locale: Locale; copy: Nov
     if (loadingId !== null && awaitReplyRef.current === 'sent') awaitReplyRef.current = 'running';
     if (loadingId === null && awaitReplyRef.current === 'running') {
       awaitReplyRef.current = 'no';
+      clearFillers();
       const conv = convsRef.current.find((c) => c.id === activeIdRef.current);
       const last = conv?.messages[conv.messages.length - 1];
       if (!last || last.role !== 'assistant' || last.error) return backToListening();
